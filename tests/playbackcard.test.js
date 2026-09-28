@@ -213,7 +213,7 @@ describe('Playback Info Card v0.2.7.17 Test Suite', () => {
             assert.match(htmlContent, /\.playbackMonitorPage \.playback-badge-group\s*\{[^}]*flex-wrap:\s*wrap;/s);
             assert.match(htmlContent, /\.playbackMonitorPage \.playback-badge-group\s*\{[^}]*max-width:\s*100%;/s);
             assert.ok(htmlContent.includes("classification.method === 'DirectStream' ? 'Stream' : badgeText"));
-            assert.ok(jsContent.includes("classification.method === 'DirectStream' ? 'Stream' : methodLabel"));
+            assert.ok(dashboardJsContent.includes("classification.method === 'DirectStream' ? 'Stream' : methodLabel"));
         });
     });
 
