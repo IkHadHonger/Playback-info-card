@@ -468,10 +468,10 @@ describe('Playback Info Card v0.2.7.13 Test Suite', () => {
             assert.equal(controller.extractDynamicRangePill({ VideoRange: 'HDR', VideoRangeType: 'DOVI' }), 'DV');
             assert.equal(controller.extractDynamicRangePill({ VideoRange: 'HDR', VideoRangeType: 'HDR10Plus' }), 'HDR10+');
             assert.equal(controller.extractDynamicRangePill({ VideoRange: 'HDR', DvProfile: 8 }), 'DV P8');
-            assert.equal(controller.extractDynamicRangePill({ VideoRange: 'HDR', RpuPresentFlag: true }), 'DV');
+            assert.equal(controller.extractDynamicRangePill({ VideoRange: 'HDR', RpuPresentFlag: 1 }), 'DV');
             assert.equal(controller.extractDynamicRangePill({ VideoRange: 'HDR', VideoDoViTitle: 'DV Profile 7.6 (FEL)', DvProfile: 7 }), 'DV P7.6 (FEL)');
             assert.equal(controller.extractDynamicRangePill({ VideoRange: 'HDR', VideoDoViTitle: 'DV Profile 7.6 (MEL)', DvProfile: 7 }), 'DV P7.6 (MEL)');
-            assert.equal(controller.extractDynamicRangePill({ VideoRange: 'HDR', VideoRangeType: 'DOVIWithELHDR10Plus', VideoDoViTitle: 'Dolby Vision Profile 7.6 (HDR10)', DvProfile: 7, DvLevel: 6, RpuPresentFlag: true, ElPresentFlag: true }), 'DV P7.6 (EL · HDR10+)');
+            assert.equal(controller.extractDynamicRangePill({ VideoRange: 'HDR', VideoRangeType: 'DOVIWithELHDR10Plus', VideoDoViTitle: 'Dolby Vision Profile 7.6 (HDR10)', DvProfile: 7, DvLevel: 6, RpuPresentFlag: 1, ElPresentFlag: 1 }), 'DV P7.6 (EL · HDR10+)');
             assert.equal(controller.extractDynamicRangePill({ VideoRange: 'HDR10' }), 'HDR10');
         });
 
