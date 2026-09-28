@@ -320,7 +320,7 @@ public class DiscordWebhookSenderTests
     }
 
     [Fact]
-    public void BuildDiscordJsonPayload_RendersRichMetadataImdbLinkAndThinProgressLine()
+    public void BuildDiscordJsonPayload_RendersRichMetadataWithoutSourceFpsAndWithProgressBar()
     {
         var json = DiscordWebhookSender.BuildDiscordJsonPayload(CreateSamplePayload());
         using var doc = JsonDocument.Parse(json);
@@ -344,17 +344,16 @@ public class DiscordWebhookSenderTests
         Assert.Contains("HDR10", allValues);
         Assert.Contains("7.1", allValues);
         Assert.Contains("42.5 Mbps", allValues);
-        Assert.Contains("🟠 **User:**", allValues);
+        Assert.Contains("**User:** alice", allValues);
+        Assert.DoesNotContain("🟠", allValues);
         Assert.DoesNotContain("23.98 fps", allValues);
-        Assert.Contains("━━", allValues);
-        Assert.Contains("──", allValues);
-        Assert.DoesNotContain("🟩", allValues);
-        Assert.DoesNotContain("⬛", allValues);
+        Assert.Contains("🟩", allValues);
+        Assert.Contains("⬛", allValues);
         Assert.Contains("10%", allValues);
     }
 
     [Fact]
-    public void BuildDiscordJsonPayload_HidesSourceFpsAndKeepsTranscodeSpeedSeparate()
+    public void BuildDiscordJsonPayload_HidesSourceFpsUsesOrangeProgressAndKeepsTranscodeSpeedSeparate()
     {
         var payload = new PlaybackNotificationPayload
         {
@@ -381,12 +380,9 @@ public class DiscordWebhookSenderTests
 
         Assert.DoesNotContain("23.98 fps", allValues);
         Assert.Contains("Transcode speed:** 336 fps", allValues);
-        Assert.Contains("━━━━", allValues);
-        Assert.Contains("────", allValues);
-        Assert.DoesNotContain("🟧", allValues);
-        Assert.DoesNotContain("⬛", allValues);
+        Assert.Contains("🟧🟧", allValues);
+        Assert.Contains("⬛", allValues);
         Assert.Contains("18%", allValues);
-        Assert.True(fields.GetArrayLength() >= 5, "Expected spacer fields between the information sections.");
     }
 
     [Fact]

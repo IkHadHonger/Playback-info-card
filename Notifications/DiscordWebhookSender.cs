@@ -439,7 +439,7 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
         var secondaryFields = new List<DiscordField>();
 
         var playbackLines = new List<string>();
-        if (!string.IsNullOrWhiteSpace(payload.Username)) playbackLines.Add($"🟠 **User:** {SafeValue(payload.Username)}");
+        if (!string.IsNullOrWhiteSpace(payload.Username)) playbackLines.Add($"**User:** {SafeValue(payload.Username)}");
         if (!string.IsNullOrWhiteSpace(payload.ClientName))
         {
             var client = string.IsNullOrWhiteSpace(payload.DeviceName) ? payload.ClientName : $"{payload.ClientName} ({payload.DeviceName})";
@@ -470,7 +470,6 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
         if (!string.IsNullOrEmpty(payload.TranscodeReasonsWhy) &&
             !payload.TranscodeReasonsWhy.Equals("Reason not reported by server", StringComparison.OrdinalIgnoreCase))
         {
-            coreFields.Add(new DiscordField("\u200B", "\u200B", false));
             var transcodeDetails = new StringBuilder($"**Why:** {SafeValue(payload.TranscodeReasonsWhy)}");
             if (!string.IsNullOrEmpty(payload.TranscodeEngine)) transcodeDetails.Append("\n**Engine:** ").Append(SafeValue(payload.TranscodeEngine));
             if (!string.IsNullOrEmpty(payload.TranscodeSpeed)) transcodeDetails.Append("\n**Transcode speed:** ").Append(SafeValue(payload.TranscodeSpeed));
@@ -481,8 +480,7 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
         {
             var pos = FormatDuration(payload.Position);
             var dur = FormatDuration(payload.TotalDuration.Value);
-            secondaryFields.Add(new DiscordField("\u200B", "\u200B", false));
-            secondaryFields.Add(new DiscordField("Progress", $"{BuildProgressLine(payload.PlaybackPercentage)}\n`{pos} / {dur}`", false));
+            secondaryFields.Add(new DiscordField("Progress", $"{BuildProgressBar(payload.PlaybackPercentage, payload.PlayMethod)}\n`{pos} / {dur}`", false));
         }
 
         // Combine fields respecting 25 field limit and 6000 character total limit
@@ -613,13 +611,14 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
             : (bitrate / 1_000d).ToString("0", CultureInfo.InvariantCulture) + " kbps";
     }
 
-    private static string BuildProgressLine(int? percentage)
+    private static string BuildProgressBar(int? percentage, string? playMethod)
     {
         var pct = Math.Clamp(percentage ?? 0, 0, 100);
-        const int segments = 24;
+        const int segments = 10;
         var filled = (int)Math.Round(pct / 100d * segments, MidpointRounding.AwayFromZero);
-        return string.Concat(System.Linq.Enumerable.Repeat("━", filled)) +
-               string.Concat(System.Linq.Enumerable.Repeat("─", segments - filled)) +
+        var fill = string.Equals(playMethod, "Transcode", StringComparison.OrdinalIgnoreCase) ? "🟧" : "🟩";
+        return string.Concat(System.Linq.Enumerable.Repeat(fill, filled)) +
+               string.Concat(System.Linq.Enumerable.Repeat("⬛", segments - filled)) +
                $"  **{pct}%**";
     }
 
