@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/IkHadHonger/Playback-info-card/main/banner.png",
     "versions": [
       {
+        "version": "0.2.7.15",
+        "changelog": "With exactly one active stream, PlayInfo now displays only the wide backdrop as a full-bleed hero that fills the artwork area without distortion; the outer edges may be cropped to preserve the original ratio. Posters and covers are shown only when two or more streams are active. Live Discord updates, precise Dolby Vision and HDR labels, Jellyfin 12.1 compatibility, and existing notification delivery are preserved. 195 C# tests and 170 JavaScript UI tests pass, and the release artifact passes ClamAV.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/IkHadHonger/Playback-info-card/releases/download/v0.2.7.15/jellyfin-plugin-playbackcard.zip",
+        "checksum": "aeb48c279727723a83127d5637402a4f",
+        "timestamp": "2026-09-28T20:12:18Z"
+      },
+      {
         "version": "0.2.7.14",
         "changelog": "Discord now updates one playback message in place every 60 seconds, with pause, resume, stop, and completion editing that same message. Series notifications use the series poster and movies use the movie poster. PlayInfo uses uncropped fanart for one active stream and posters for multiple streams. Dynamic-range badges distinguish Dolby Vision, HDR10+, HDR10, HLG, and HDR; Dolby Vision includes the reported profile, level, enhancement layer, and HDR base layer without guessing FEL or MEL. Jellyfin 12.1 compatibility and existing notification delivery are preserved. 195 C# tests and 170 JavaScript UI tests pass, and the release artifact passes ClamAV.",
         "targetAbi": "12.1.0.0",
