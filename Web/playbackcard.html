@@ -13,7 +13,7 @@
                     <div class="playbackMonitorTitleGroup">
                         <div class="playbackMonitorTitleRow">
                             <h2 class="sectionTitle playbackMonitorTitle">PlayInfo</h2>
-                            <span class="playbackMonitorVersionBadge">v0.2.7.14</span>
+                            <span class="playbackMonitorVersionBadge">v0.2.7.15</span>
                         </div>
                         <p class="playbackMonitorDescription">Real-time playback telemetry reported by Jellyfin. Local &amp; privacy-first.</p>
                     </div>
@@ -322,7 +322,7 @@
                     <div class="diagnosticsGrid">
                         <div class="diagItem">
                             <span class="diagLabel">Plugin Version</span>
-                            <span id="diagPluginVersion" class="diagValue">0.2.7.14</span>
+                            <span id="diagPluginVersion" class="diagValue">0.2.7.15</span>
                         </div>
                         <div class="diagItem">
                             <span class="diagLabel">Server Version</span>
@@ -835,14 +835,14 @@
     flex-basis: 90px;
 }
 
-/* A single stream has enough horizontal room for uncropped fanart. `contain` keeps
-   the original proportions intact; dark side gutters are preferable to distortion.
-   Multi-stream cards omit this class and continue to show their portrait posters. */
+/* A single stream uses its wide fanart as a full-bleed hero. `cover` preserves the
+   original proportions while cropping only the outer edges, so the artwork always
+   fills the card without stretching. Multi-stream cards continue to use posters. */
 .playbackMonitorPage .playback-poster-wrap.single-stream-backdrop {
     background-color: #080c12;
     background-position: center;
     background-repeat: no-repeat;
-    background-size: contain;
+    background-size: cover;
 }
 
 .playbackMonitorPage .playback-poster-wrap.single-stream-backdrop .playback-poster {
@@ -2628,7 +2628,7 @@
         window.__playbackInfoCardMonitorController.dispose();
     }
 
-    var PLUGIN_VERSION = '0.2.7.14';
+    var PLUGIN_VERSION = '0.2.7.15';
     var POLL_INTERVAL_MS = 3000;
     var STALE_THRESHOLD_MS = POLL_INTERVAL_MS * 2; // Stale if > 6s without update
 
