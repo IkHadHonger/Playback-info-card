@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/IkHadHonger/Playback-info-card/main/banner.png",
     "versions": [
       {
+        "version": "0.2.7.13",
+        "changelog": "Discord progress now shows a colored segment for every positive percentage, including early values such as 2–4%, while exactly 0% remains empty. The PlayInfo page uses portrait posters again and keeps fanart only as the ambient card background, with poster proportions preserved. Retains 24-hour ETA, hidden Discord source FPS, Jellyfin 12.1 compatibility, and existing notification delivery. 193 C# tests and 169 JavaScript UI tests pass, and the release artifact passes ClamAV.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/IkHadHonger/Playback-info-card/releases/download/v0.2.7.13/jellyfin-plugin-playbackcard.zip",
+        "checksum": "b728bd9f897349ae4c9552a084e2baa2",
+        "timestamp": "2026-09-28T18:19:30Z"
+      },
+      {
         "version": "0.2.7.12",
         "changelog": "Restores the compact Discord layout by removing the orange user marker and extra spacer rows, and restores the green/orange block progress bar. Source FPS remains hidden from Discord media details. PlayInfo ETA times now use 24-hour format. Jellyfin 12.1 compatibility and existing notification delivery are preserved. 193 C# tests and 169 JavaScript UI tests pass, and the release artifact passes ClamAV.",
         "targetAbi": "12.1.0.0",
