@@ -385,7 +385,7 @@ public static class PlaybackEventMapper
                 videoStream.Title,
                 videoStream.Profile,
                 string.IsNullOrWhiteSpace(dvProfile) ? null : "DOVI",
-                videoStream.RpuPresentFlag == true ? "DOVI RPU" : null
+                videoStream.RpuPresentFlag == 1 ? "DOVI RPU" : null
             }.Where(value => !string.IsNullOrWhiteSpace(value)));
 
         if (descriptor.Contains("DOVI", StringComparison.OrdinalIgnoreCase)
@@ -407,7 +407,7 @@ public static class PlaybackEventMapper
                 ? "FEL"
                 : descriptor.Contains("MEL", StringComparison.OrdinalIgnoreCase)
                     ? "MEL"
-                    : videoStream.ElPresentFlag == true || descriptor.Contains("WithEL", StringComparison.OrdinalIgnoreCase) ? "EL" : null;
+                    : videoStream.ElPresentFlag == 1 || descriptor.Contains("WithEL", StringComparison.OrdinalIgnoreCase) ? "EL" : null;
             var baseRange = descriptor.Contains("HDR10+", StringComparison.OrdinalIgnoreCase)
                 || descriptor.Contains("HDR10PLUS", StringComparison.OrdinalIgnoreCase)
                 || descriptor.Contains("HDR10 PLUS", StringComparison.OrdinalIgnoreCase)
