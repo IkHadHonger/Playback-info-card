@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/IkHadHonger/Playback-info-card/main/banner.png",
     "versions": [
       {
+        "version": "0.2.7.9",
+        "changelog": "Richer Discord and Telegram playback cards with genres, age classification, runtime, clickable IMDb links, codec/resolution/HDR/bitrate/audio-channel details, a clearer transcode warning, and a visual progress bar. Optional OMDb enrichment adds IMDb ratings and vote counts, with automatic fallback to Jellyfin community ratings and IMDb IDs. Jellyfin 12.1 compatibility and existing notification delivery are preserved. All 191 tests pass.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/IkHadHonger/Playback-info-card/releases/download/v0.2.7.9/jellyfin-plugin-playbackcard.zip",
+        "checksum": "d86e827e2bc784bc9a8d3bc04250edf8",
+        "timestamp": "2026-09-28T15:37:49Z"
+      },
+      {
         "version": "0.2.7.8",
         "changelog": "Jellyfin 12.1 compatibility release. Built against Jellyfin.Controller and Jellyfin.Model 12.1.0 on .NET 10, migrated hardware acceleration handling from the removed HardwareEncodingType API to HardwareAccelerationType, and retained Discord and Telegram notification delivery. All 187 tests pass.",
         "targetAbi": "12.1.0.0",
