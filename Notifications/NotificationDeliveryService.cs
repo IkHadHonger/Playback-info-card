@@ -29,6 +29,8 @@ public sealed class NotificationDeliveryService : BackgroundService, INotificati
     private readonly ConcurrentDictionary<string, DateTimeOffset> _stopDedupe = new();
     private readonly ConcurrentDictionary<string, DateTimeOffset> _pauseResumeDedupe = new();
     private readonly ConcurrentDictionary<string, DateTimeOffset> _progressDedupe = new();
+    private readonly ConcurrentDictionary<string, DateTimeOffset> _discordProgressDedupe = new();
+    private readonly ConcurrentDictionary<string, DateTimeOffset> _telegramProgressDedupe = new();
 
     // Diagnostics state
     private DateTimeOffset? _lastAttemptTimestamp;
@@ -93,6 +95,15 @@ public sealed class NotificationDeliveryService : BackgroundService, INotificati
             return;
         }
 
+        // Discord edits one live message every minute; Telegram retains the configured
+        // periodic-message interval. Keep those throttles independent so Discord can look live
+        // without making Telegram noisy.
+        if (record.EventType == NotificationEventType.Progress)
+        {
+            EnqueueProgress(record, config);
+            return;
+        }
+
         // 3. Deduplication Check
         if (ShouldDedupe(record, config))
         {
@@ -130,6 +141,34 @@ public sealed class NotificationDeliveryService : BackgroundService, INotificati
             {
                 _logger.LogWarning("[Notifications] Telegram delivery enabled but bot token or chat ID is not configured. Event skipped.");
             }
+        }
+    }
+
+    private void EnqueueProgress(PlaybackEventRecord record, PluginConfiguration config)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var sessionKey = record.InternalSessionKey;
+        var delivered = false;
+
+        if (config.DiscordEnabled && !string.IsNullOrWhiteSpace(_secretStore.GetDiscordWebhookUrl()) &&
+            !IsDuplicateAndRecord(_discordProgressDedupe, sessionKey, TimeSpan.FromMinutes(1), now))
+        {
+            _discordQueue.Enqueue(record);
+            delivered = true;
+        }
+
+        var telegramInterval = TimeSpan.FromMinutes(Math.Max(5, config.ProgressIntervalMinutes));
+        if (config.TelegramEnabled && !string.IsNullOrWhiteSpace(_secretStore.GetTelegramBotToken()) &&
+            !string.IsNullOrWhiteSpace(config.TelegramChatId) &&
+            !IsDuplicateAndRecord(_telegramProgressDedupe, sessionKey, telegramInterval, now))
+        {
+            _telegramQueue.Enqueue(record);
+            delivered = true;
+        }
+
+        if (!delivered)
+        {
+            Interlocked.Increment(ref _dedupeCount);
         }
     }
 
@@ -193,6 +232,8 @@ public sealed class NotificationDeliveryService : BackgroundService, INotificati
             _stopDedupe.TryRemove(sessionKey, out _);
             _pauseResumeDedupe.TryRemove(sessionKey, out _);
             _progressDedupe.TryRemove(sessionKey, out _);
+            _discordProgressDedupe.TryRemove(sessionKey, out _);
+            _telegramProgressDedupe.TryRemove(sessionKey, out _);
 
             // Start deduplicated within 10s
             return IsDuplicateAndRecord(_startDedupe, sessionKey, TimeSpan.FromSeconds(10), now);
@@ -200,6 +241,8 @@ public sealed class NotificationDeliveryService : BackgroundService, INotificati
 
         if (record.EventType == NotificationEventType.Stop || record.EventType == NotificationEventType.Completion)
         {
+            _discordProgressDedupe.TryRemove(sessionKey, out _);
+            _telegramProgressDedupe.TryRemove(sessionKey, out _);
             // Primary dedupe: 1 stop per sessionKey (indefinitely, until Start clears it or TTL prunes it)
             if (!string.IsNullOrEmpty(sessionKey))
             {
@@ -281,7 +324,7 @@ public sealed class NotificationDeliveryService : BackgroundService, INotificati
         var discordTask = ProcessQueueAsync(
             _discordQueue,
             cfg => cfg.DiscordEnabled && !string.IsNullOrWhiteSpace(_secretStore.GetDiscordWebhookUrl()),
-            (payload, cfg, posterPath, ct) => _discordSender.SendAsync(payload, _secretStore.GetDiscordWebhookUrl(), ct, posterPath),
+            SendDiscordAsync,
             value => _discordAvailability = value,
             "DiscordWorker",
             stoppingToken);
@@ -289,13 +332,28 @@ public sealed class NotificationDeliveryService : BackgroundService, INotificati
         var telegramTask = ProcessQueueAsync(
             _telegramQueue,
             cfg => cfg.TelegramEnabled && !string.IsNullOrWhiteSpace(_secretStore.GetTelegramBotToken()) && !string.IsNullOrWhiteSpace(cfg.TelegramChatId),
-            (payload, cfg, posterPath, ct) => _telegramSender.SendAsync(payload, _secretStore.GetTelegramBotToken(), cfg.TelegramChatId, ct, posterPath),
+            (payload, cfg, posterPath, _, ct) => _telegramSender.SendAsync(payload, _secretStore.GetTelegramBotToken(), cfg.TelegramChatId, ct, posterPath),
             value => _telegramAvailability = value,
             "TelegramWorker",
             stoppingToken);
 
         await Task.WhenAll(discordTask, telegramTask).ConfigureAwait(false);
         _workerState = "Stopped";
+    }
+
+    private async Task<DeliveryResult> SendDiscordAsync(
+        PlaybackNotificationPayload payload,
+        PluginConfiguration config,
+        string? posterImagePath,
+        string sessionKey,
+        CancellationToken cancellationToken)
+    {
+        using var sessionScope = DiscordWebhookSender.UseSession(sessionKey);
+        return await _discordSender.SendAsync(
+            payload,
+            _secretStore.GetDiscordWebhookUrl(),
+            cancellationToken,
+            posterImagePath).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -306,7 +364,7 @@ public sealed class NotificationDeliveryService : BackgroundService, INotificati
     private async Task ProcessQueueAsync(
         DestinationQueue queue,
         Func<PluginConfiguration, bool> isConfigured,
-        Func<PlaybackNotificationPayload, PluginConfiguration, string?, CancellationToken, Task<DeliveryResult>> send,
+        Func<PlaybackNotificationPayload, PluginConfiguration, string?, string, CancellationToken, Task<DeliveryResult>> send,
         Action<string> setAvailability,
         string workerName,
         CancellationToken stoppingToken)
@@ -336,7 +394,7 @@ public sealed class NotificationDeliveryService : BackgroundService, INotificati
                 }
 
                 _lastAttemptTimestamp = DateTimeOffset.UtcNow;
-                var result = await send(payload, config, posterImagePath, stoppingToken).ConfigureAwait(false);
+                var result = await send(payload, config, posterImagePath, record.InternalSessionKey, stoppingToken).ConfigureAwait(false);
 
                 _lastHttpStatus = result.StatusCode;
 

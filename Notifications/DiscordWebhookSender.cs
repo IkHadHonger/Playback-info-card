@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Net;
 using System.Net.Http;
@@ -35,6 +36,8 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
     private readonly HttpClient _httpClient;
     private readonly bool _ownsClient;
     private readonly ILogger<DiscordWebhookSender> _logger;
+    private readonly ConcurrentDictionary<string, LiveMessageState> _liveMessages = new(StringComparer.Ordinal);
+    private static readonly AsyncLocal<string?> CurrentSessionKey = new();
 
     /// <summary>
     /// Injectable delay abstraction for deterministic unit testing of rate limits and backoffs.
@@ -231,6 +234,28 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
         }
     };
 
+    private static readonly WebhookSenderProfile DiscordWaitProfile = new()
+    {
+        SenderTag = "DiscordSender",
+        ApiDisplayName = "Discord Webhook",
+        ReadSuccessBody = true,
+        ParseSuccess = (logger, status, body) =>
+        {
+            logger.LogInformation("[DiscordSender] Live message created (HTTP {Status})", status);
+            return DeliveryResult.Ok(status, body);
+        },
+        ParseRetryAfter = (response, body) => ParseRetryAfter(response, body),
+        ReadClientErrorBody = false,
+        DescribeClientError = (status, _) => status switch
+        {
+            400 => "Bad Request (malformed Discord payload or parameters)",
+            401 => "Unauthorized (invalid or revoked Discord webhook token)",
+            403 => "Forbidden (Discord webhook lacks permissions in channel)",
+            404 => "Not Found (Discord webhook URL or live message does not exist)",
+            _ => null
+        }
+    };
+
     /// <inheritdoc />
     public async Task<DeliveryResult> SendAsync(PlaybackNotificationPayload payload, string webhookUrl, CancellationToken cancellationToken, string? posterImagePath = null)
     {
@@ -240,7 +265,41 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
             return DeliveryResult.Failed(errorCat, 0, permanent: true);
         }
 
+        var sessionKey = CurrentSessionKey.Value;
+        var hasSession = !string.IsNullOrWhiteSpace(sessionKey);
+        var isTerminal = payload.EventType is NotificationEventType.Stop or NotificationEventType.Completion;
+
+        if (hasSession && payload.EventType != NotificationEventType.Start && _liveMessages.TryGetValue(sessionKey!, out var liveState))
+        {
+            var editUri = BuildMessageUri(uri!, liveState.MessageId);
+            var editJson = BuildDiscordJsonPayload(payload, includeImageAttachment: liveState.HasPoster);
+            var editResult = await WebhookSenderRetryHelper.ExecuteWithRetryAsync(
+                _httpClient,
+                _logger,
+                DiscordProfile,
+                editUri,
+                editJson,
+                DelayAsync,
+                cancellationToken,
+                HttpMethod.Patch).ConfigureAwait(false);
+
+            if (isTerminal || editResult.StatusCode == 404)
+            {
+                _liveMessages.TryRemove(sessionKey!, out _);
+            }
+
+            if (editResult.Success || editResult.StatusCode != 404)
+            {
+                return editResult;
+            }
+
+            _logger.LogInformation("[DiscordSender] Live message no longer exists; creating a replacement for session {SessionKey}.", sessionKey);
+        }
+
         var imageBytes = WebhookImageLoader.TryReadImageBytes(posterImagePath, _logger, "DiscordSender");
+        var createLiveMessage = hasSession && !isTerminal;
+        var targetUri = createLiveMessage ? BuildWaitUri(uri!) : uri!;
+        var profile = createLiveMessage ? DiscordWaitProfile : DiscordProfile;
 
         if (imageBytes != null)
         {
@@ -250,8 +309,8 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
             var uploadResult = await WebhookSenderRetryHelper.ExecuteWithRetryAsync(
                 _httpClient,
                 _logger,
-                DiscordProfile,
-                uri!,
+                profile,
+                targetUri,
                 () =>
                 {
                     var multipart = new MultipartFormDataContent();
@@ -266,7 +325,7 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
 
             if (uploadResult.Success)
             {
-                return uploadResult;
+                return TrackLiveMessage(sessionKey, uploadResult, hasPoster: true);
             }
 
             // Discord itself rejected the attachment -- don't let a poster-specific rejection
@@ -275,14 +334,72 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
         }
 
         var jsonBody = BuildDiscordJsonPayload(payload);
-        return await WebhookSenderRetryHelper.ExecuteWithRetryAsync(
+        var sendResult = await WebhookSenderRetryHelper.ExecuteWithRetryAsync(
             _httpClient,
             _logger,
-            DiscordProfile,
-            uri!,
+            profile,
+            targetUri,
             jsonBody,
             DelayAsync,
             cancellationToken).ConfigureAwait(false);
+        return TrackLiveMessage(sessionKey, sendResult, hasPoster: false);
+    }
+
+    internal static IDisposable UseSession(string? sessionKey)
+    {
+        var previous = CurrentSessionKey.Value;
+        CurrentSessionKey.Value = sessionKey;
+        return new SessionKeyScope(previous);
+    }
+
+    private DeliveryResult TrackLiveMessage(string? sessionKey, DeliveryResult result, bool hasPoster)
+    {
+        if (!result.Success || string.IsNullOrWhiteSpace(sessionKey) || string.IsNullOrWhiteSpace(result.Description))
+        {
+            return result;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(result.Description);
+            if (document.RootElement.TryGetProperty("id", out var idElement))
+            {
+                var messageId = idElement.GetString();
+                if (!string.IsNullOrWhiteSpace(messageId) && NumericIdRegex.IsMatch(messageId))
+                {
+                    _liveMessages[sessionKey] = new LiveMessageState(messageId, hasPoster);
+                    return DeliveryResult.Ok(result.StatusCode);
+                }
+            }
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning("[DiscordSender] Discord accepted the notification but returned an unreadable live-message response: {Error}", SecretRedactor.SanitizeExceptionMessage(ex));
+        }
+
+        _logger.LogWarning("[DiscordSender] Discord accepted the notification but did not return a usable message ID; this session cannot be updated in place.");
+        return DeliveryResult.Ok(result.StatusCode);
+    }
+
+    private static Uri BuildWaitUri(Uri webhookUri)
+    {
+        var builder = new UriBuilder(webhookUri) { Query = "wait=true" };
+        return builder.Uri;
+    }
+
+    private static Uri BuildMessageUri(Uri webhookUri, string messageId)
+    {
+        if (!NumericIdRegex.IsMatch(messageId))
+        {
+            throw new ArgumentException("Discord message ID must contain digits only.", nameof(messageId));
+        }
+
+        var builder = new UriBuilder(webhookUri)
+        {
+            Path = webhookUri.AbsolutePath.TrimEnd('/') + "/messages/" + messageId,
+            Query = string.Empty
+        };
+        return builder.Uri;
     }
 
     public static TimeSpan? ParseRetryAfter(HttpResponseMessage response, string? responseBody = null)
@@ -648,6 +765,25 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
     }
 
     private sealed record DiscordField(string Name, string Value, bool Inline);
+    private sealed record LiveMessageState(string MessageId, bool HasPoster);
+
+    private sealed class SessionKeyScope : IDisposable
+    {
+        private readonly string? _previous;
+        private bool _disposed;
+
+        public SessionKeyScope(string? previous)
+        {
+            _previous = previous;
+        }
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            CurrentSessionKey.Value = _previous;
+            _disposed = true;
+        }
+    }
 }
 
 /// <summary>
@@ -694,9 +830,10 @@ internal static class WebhookSenderRetryHelper
         Uri uri,
         string jsonPayload,
         Func<TimeSpan, CancellationToken, Task>? delayOverride,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        HttpMethod? httpMethod = null)
     {
-        return ExecuteWithRetryAsync(httpClient, logger, profile, uri, () => new StringContent(jsonPayload, Encoding.UTF8, "application/json"), delayOverride, cancellationToken);
+        return ExecuteWithRetryAsync(httpClient, logger, profile, uri, () => new StringContent(jsonPayload, Encoding.UTF8, "application/json"), delayOverride, cancellationToken, httpMethod);
     }
 
     /// <summary>
@@ -714,7 +851,8 @@ internal static class WebhookSenderRetryHelper
         Uri uri,
         Func<HttpContent> contentFactory,
         Func<TimeSpan, CancellationToken, Task>? delayOverride,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        HttpMethod? httpMethod = null)
     {
         ArgumentNullException.ThrowIfNull(httpClient);
         ArgumentNullException.ThrowIfNull(logger);
@@ -724,7 +862,7 @@ internal static class WebhookSenderRetryHelper
 
         for (var attempt = 0; attempt <= MaxRetries; attempt++)
         {
-            using var request = new HttpRequestMessage(HttpMethod.Post, uri);
+            using var request = new HttpRequestMessage(httpMethod ?? HttpMethod.Post, uri);
             request.Content = contentFactory();
 
             try
