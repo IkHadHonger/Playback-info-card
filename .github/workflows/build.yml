@@ -32,6 +32,9 @@ jobs:
     - name: Build Plugin (Release)
       run: dotnet build --configuration Release --no-restore
 
+    - name: Run C# Tests
+      run: dotnet test --configuration Release --no-build
+
     - name: Package Plugin Artifacts
       run: |
         mkdir -p output
@@ -65,8 +68,11 @@ jobs:
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: jellyfin-plugin-playbackcard
-        path: output/
+        name: jellyfin-plugin-playbackcard-jellyfin-12.1
+        path: |
+          jellyfin-plugin-playbackcard.zip
+          SHA256SUMS.txt
+          MD5SUMS.txt
 
     - name: Create GitHub Release
       if: startsWith(github.ref, 'refs/tags/v')
