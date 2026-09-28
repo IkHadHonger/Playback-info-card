@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/IkHadHonger/Playback-info-card/main/banner.png",
     "versions": [
       {
+        "version": "0.2.7.12",
+        "changelog": "Restores the compact Discord layout by removing the orange user marker and extra spacer rows, and restores the green/orange block progress bar. Source FPS remains hidden from Discord media details. PlayInfo ETA times now use 24-hour format. Jellyfin 12.1 compatibility and existing notification delivery are preserved. 193 C# tests and 169 JavaScript UI tests pass, and the release artifact passes ClamAV.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/IkHadHonger/Playback-info-card/releases/download/v0.2.7.12/jellyfin-plugin-playbackcard.zip",
+        "checksum": "8e4e9e0431dec158154625ca1335612e",
+        "timestamp": "2026-09-28T17:52:33Z"
+      },
+      {
         "version": "0.2.7.11",
         "changelog": "Discord playback cards no longer show source FPS, use a thinner text-based progress indicator, add an orange user marker, and include clearer spacing between playback/media, transcoding, and progress sections. Transcoder speed remains separate when Jellyfin reports it. Jellyfin 12.1 compatibility and existing Discord/Telegram delivery are preserved. 193 C# tests and 169 JavaScript UI tests pass, and the release artifact passes ClamAV.",
         "targetAbi": "12.1.0.0",
