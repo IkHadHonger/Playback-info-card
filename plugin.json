@@ -6,5 +6,6 @@
   "overview": "Admin playback session monitor displaying active streams, play state, and real-time transcode telemetry.",
   "owner": "Ubaidofficial",
   "category": "General",
-  "targetAbi": "10.9.0.0"
+  "targetAbi": "12.1.0.0"
 }
+

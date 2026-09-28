@@ -193,7 +193,7 @@ public class PlaybackSelfSessionsControllerTests
                 VideoCodec = "h264",
                 AudioCodec = "aac",
                 Container = "mp4",
-                HardwareAccelerationType = HardwareEncodingType.NVENC,
+                HardwareAccelerationType = HardwareAccelerationType.nvenc,
                 TranscodeReasons = TranscodeReason.ContainerNotSupported | TranscodeReason.VideoCodecNotSupported
             }
         };
@@ -215,7 +215,7 @@ public class PlaybackSelfSessionsControllerTests
         Assert.True(dto.IsAudioDirect);
         Assert.Equal("Video Transcoded", dto.VideoStatus);
         Assert.Equal("Audio Direct", dto.AudioStatus);
-        Assert.Equal("NVENC", dto.TranscodeEngine);
+        Assert.Equal("nvenc", dto.TranscodeEngine);
         Assert.Contains("Container unsupported", dto.TranscodeReasonsWhy);
         Assert.Contains("Video codec unsupported", dto.TranscodeReasonsWhy);
     }
@@ -887,3 +887,4 @@ public class PlaybackSelfSessionsControllerTests
         }
     }
 }
+

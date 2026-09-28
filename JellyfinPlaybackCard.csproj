@@ -18,10 +18,10 @@
 
   <!-- Jellyfin Server Dependencies -->
   <ItemGroup>
-    <PackageReference Include="Jellyfin.Controller" Version="10.9.11">
+    <PackageReference Include="Jellyfin.Controller" Version="12.1.0">
       <PrivateAssets>All</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Jellyfin.Model" Version="10.9.11">
+    <PackageReference Include="Jellyfin.Model" Version="12.1.0">
       <PrivateAssets>All</PrivateAssets>
     </PackageReference>
     <FrameworkReference Include="Microsoft.AspNetCore.App">
@@ -36,3 +36,4 @@
   </ItemGroup>
 
 </Project>
+

@@ -2,7 +2,7 @@ name: Build and Package Plugin
 
 on:
   push:
-    branches: [ main, 'release/**' ]
+    branches: [ main, 'release/**', 'jellyfin-12.1-compat' ]
     tags:
       - 'v*'
   pull_request:
@@ -78,3 +78,4 @@ jobs:
           MD5SUMS.txt
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
