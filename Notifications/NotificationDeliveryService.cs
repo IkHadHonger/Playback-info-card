@@ -120,6 +120,16 @@ public sealed class NotificationDeliveryService : BackgroundService, INotificati
             return;
         }
 
+        // Seed Discord's server clock from Start/Resume as well as real progress samples. Some
+        // Jellyfin clients do not publish PlaybackProgress continuously, but the active stream
+        // still needs its existing Discord embed refreshed once per minute.
+        if (config.DiscordEnabled &&
+            (record.EventType is NotificationEventType.Start or NotificationEventType.Resume) &&
+            !string.IsNullOrWhiteSpace(_secretStore.GetDiscordWebhookUrl()))
+        {
+            ScheduleDiscordLiveUpdate(record, DateTimeOffset.UtcNow);
+        }
+
         // 4. Enqueue to independent destination queues
         if (config.DiscordEnabled)
         {
@@ -188,7 +198,7 @@ public sealed class NotificationDeliveryService : BackgroundService, INotificati
 
     private void ScheduleDiscordLiveUpdate(PlaybackEventRecord record, DateTimeOffset now)
     {
-        _latestDiscordProgress[record.InternalSessionKey] = record;
+        _latestDiscordProgress[record.InternalSessionKey] = record.ProjectProgress(now);
         _discordProgressDedupe.TryAdd(record.InternalSessionKey, now);
     }
 
@@ -211,7 +221,7 @@ public sealed class NotificationDeliveryService : BackgroundService, INotificati
             // send an older sample when a newer one is already available.
             if (_latestDiscordProgress.TryGetValue(entry.Key, out var latest))
             {
-                _discordQueue.Enqueue(latest);
+                _discordQueue.Enqueue(latest.ProjectProgress(now));
                 queued++;
             }
         }

@@ -1,5 +1,5 @@
 /**
- * Playback Info Card - Primary Dashboard Integration (v0.2.7.16)
+ * Playback Info Card - Primary Dashboard Integration (v0.2.7.17)
  * Completely replaces Jellyfin's standard stock Devices section on the default
  * Dashboard with the NOW PLAYING telemetry grid and active connected device telemetry.
  */
@@ -7,8 +7,8 @@
 (function (global) {
     'use strict';
 
-    var VERSION = '0.2.7.16';
-    var ASSET_REVISION = '0.2.7.16';
+    var VERSION = '0.2.7.17';
+    var ASSET_REVISION = '0.2.7.17';
     var CONTAINER_ID = 'playback-card-nowplaying-container';
     var POLL_INTERVAL_MS = 3000;
 
@@ -1322,6 +1322,9 @@
             var METHOD_LABELS = { DirectPlay: 'Direct Play', DirectStream: 'Direct Stream', Remux: 'Remux', Transcode: 'Transcode' };
             var METHOD_BADGE_CLASSES = { DirectPlay: 'direct-play', DirectStream: 'direct-stream', Remux: 'remux', Transcode: 'transcode' };
             var methodLabel = METHOD_LABELS[classification.method] || 'Direct Play';
+            // Keep the compact header controls inside narrow multi-stream cards. The full
+            // playback method remains visible in the telemetry pill/details below.
+            var headerMethodLabel = classification.method === 'DirectStream' ? 'Stream' : methodLabel;
             var methodBadgeCls = METHOD_BADGE_CLASSES[classification.method] || 'direct-play';
             var stateLabel = isPaused ? 'Paused' : 'Playing';
             var stateBadgeCls = isPaused ? 'paused' : 'playing';
@@ -1696,7 +1699,7 @@
                                 '</div>' +
                                 '<div class="playback-badge-group">' +
                                     '<span class="playback-badge state-badge ' + stateBadgeCls + '">' + stateIcon + ' ' + escapeHtml(stateLabel) + '</span>' +
-                                    '<span class="playback-badge ' + methodBadgeCls + '">' + escapeHtml(methodLabel) + '</span>' +
+                                    '<span class="playback-badge ' + methodBadgeCls + '" title="Playback method: ' + escapeHtml(methodLabel) + '">' + escapeHtml(headerMethodLabel) + '</span>' +
                                     sessionActionsHtml +
                                     infoBtnHtml +
                                 '</div>' +

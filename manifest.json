@@ -9,6 +9,62 @@
     "imageUrl": "https://raw.githubusercontent.com/IkHadHonger/Playback-info-card/main/banner.png",
     "versions": [
       {
+        "version": "0.2.7.16",
+        "changelog": "Discord live progress is now driven by a server-side scheduler that edits the existing embed with Jellyfin's newest position every 60 seconds, instead of depending on a progress event arriving at the exact interval. Multi-stream PlayInfo cards now stretch their poster rows equally, so all posters have the same visible height. The settings text clearly separates Discord's fixed 60-second cadence from Telegram's configurable interval. Jellyfin 12.1 compatibility, precise Dolby Vision and HDR labels, and existing notification delivery are preserved. 196 C# tests and 172 JavaScript UI tests pass, and the release artifact passes ClamAV.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/IkHadHonger/Playback-info-card/releases/download/v0.2.7.16/jellyfin-plugin-playbackcard.zip",
+        "checksum": "4bbde000e4fa9e739bf92503e356f408",
+        "timestamp": "2026-09-28T20:33:40Z"
+      },
+      {
+        "version": "0.2.7.15",
+        "changelog": "With exactly one active stream, PlayInfo now displays only the wide backdrop as a full-bleed hero that fills the artwork area without distortion; the outer edges may be cropped to preserve the original ratio. Posters and covers are shown only when two or more streams are active. Live Discord updates, precise Dolby Vision and HDR labels, Jellyfin 12.1 compatibility, and existing notification delivery are preserved. 195 C# tests and 170 JavaScript UI tests pass, and the release artifact passes ClamAV.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/IkHadHonger/Playback-info-card/releases/download/v0.2.7.15/jellyfin-plugin-playbackcard.zip",
+        "checksum": "aeb48c279727723a83127d5637402a4f",
+        "timestamp": "2026-09-28T20:12:18Z"
+      },
+      {
+        "version": "0.2.7.14",
+        "changelog": "Discord now updates one playback message in place every 60 seconds, with pause, resume, stop, and completion editing that same message. Series notifications use the series poster and movies use the movie poster. PlayInfo uses uncropped fanart for one active stream and posters for multiple streams. Dynamic-range badges distinguish Dolby Vision, HDR10+, HDR10, HLG, and HDR; Dolby Vision includes the reported profile, level, enhancement layer, and HDR base layer without guessing FEL or MEL. Jellyfin 12.1 compatibility and existing notification delivery are preserved. 195 C# tests and 170 JavaScript UI tests pass, and the release artifact passes ClamAV.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/IkHadHonger/Playback-info-card/releases/download/v0.2.7.14/jellyfin-plugin-playbackcard.zip",
+        "checksum": "062b956e34cb9995479d8e11c586844c",
+        "timestamp": "2026-09-28T19:45:59Z"
+      },
+      {
+        "version": "0.2.7.13",
+        "changelog": "Discord progress now shows a colored segment for every positive percentage, including early values such as 2–4%, while exactly 0% remains empty. The PlayInfo page uses portrait posters again and keeps fanart only as the ambient card background, with poster proportions preserved. Retains 24-hour ETA, hidden Discord source FPS, Jellyfin 12.1 compatibility, and existing notification delivery. 193 C# tests and 169 JavaScript UI tests pass, and the release artifact passes ClamAV.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/IkHadHonger/Playback-info-card/releases/download/v0.2.7.13/jellyfin-plugin-playbackcard.zip",
+        "checksum": "b728bd9f897349ae4c9552a084e2baa2",
+        "timestamp": "2026-09-28T18:19:30Z"
+      },
+      {
+        "version": "0.2.7.12",
+        "changelog": "Restores the compact Discord layout by removing the orange user marker and extra spacer rows, and restores the green/orange block progress bar. Source FPS remains hidden from Discord media details. PlayInfo ETA times now use 24-hour format. Jellyfin 12.1 compatibility and existing notification delivery are preserved. 193 C# tests and 169 JavaScript UI tests pass, and the release artifact passes ClamAV.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/IkHadHonger/Playback-info-card/releases/download/v0.2.7.12/jellyfin-plugin-playbackcard.zip",
+        "checksum": "8e4e9e0431dec158154625ca1335612e",
+        "timestamp": "2026-09-28T17:52:33Z"
+      },
+      {
+        "version": "0.2.7.11",
+        "changelog": "Discord playback cards no longer show source FPS, use a thinner text-based progress indicator, add an orange user marker, and include clearer spacing between playback/media, transcoding, and progress sections. Transcoder speed remains separate when Jellyfin reports it. Jellyfin 12.1 compatibility and existing Discord/Telegram delivery are preserved. 193 C# tests and 169 JavaScript UI tests pass, and the release artifact passes ClamAV.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/IkHadHonger/Playback-info-card/releases/download/v0.2.7.11/jellyfin-plugin-playbackcard.zip",
+        "checksum": "843dd1457cfba38c642f20599115629b",
+        "timestamp": "2026-09-28T17:37:20Z"
+      },
+      {
+        "version": "0.2.7.10",
+        "changelog": "PlayInfo cards now prefer wide Jellyfin fanart/backdrops, with a non-stretched poster fallback, and card actions wrap instead of being clipped. Discord and Telegram gain colored progress bars; Discord places user/client details first; source frame rate and transcoder speed are reported separately. Jellyfin 12.1 compatibility and notification delivery are preserved. 193 C# tests and 169 JavaScript UI tests pass, and the release artifact passes ClamAV.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/IkHadHonger/Playback-info-card/releases/download/v0.2.7.10/jellyfin-plugin-playbackcard.zip",
+        "checksum": "8f7186a7187ced01012a030df21f4207",
+        "timestamp": "2026-09-28T17:04:34Z"
+      },
+      {
         "version": "0.2.7.9",
         "changelog": "Richer Discord and Telegram playback cards with genres, age classification, runtime, clickable IMDb links, codec/resolution/HDR/bitrate/audio-channel details, a clearer transcode warning, and a visual progress bar. Optional OMDb enrichment adds IMDb ratings and vote counts, with automatic fallback to Jellyfin community ratings and IMDb IDs. Jellyfin 12.1 compatibility and existing notification delivery are preserved. All 191 tests pass.",
         "targetAbi": "12.1.0.0",

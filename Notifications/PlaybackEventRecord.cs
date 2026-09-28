@@ -247,6 +247,80 @@ public sealed class PlaybackEventRecord
     internal string? PrimaryImagePath { get; init; }
 
     /// <summary>
+    /// Creates a progress snapshot at <paramref name="now"/>. The server can use this to keep a
+    /// Discord live message moving even when a client temporarily emits no PlaybackProgress event;
+    /// a later real Jellyfin sample replaces this projection and corrects any drift.
+    /// </summary>
+    internal PlaybackEventRecord ProjectProgress(DateTimeOffset now)
+    {
+        var elapsed = !IsPaused && now > Timestamp ? now - Timestamp : TimeSpan.Zero;
+        var projectedPosition = Position + elapsed;
+        if (TotalDuration.HasValue && projectedPosition > TotalDuration.Value)
+        {
+            projectedPosition = TotalDuration.Value;
+        }
+
+        var projectedPercentage = PlaybackPercentage;
+        if (TotalDuration.HasValue && TotalDuration.Value > TimeSpan.Zero)
+        {
+            projectedPercentage = (int)Math.Clamp(
+                Math.Round(projectedPosition.TotalMilliseconds / TotalDuration.Value.TotalMilliseconds * 100, MidpointRounding.AwayFromZero),
+                0,
+                100);
+        }
+
+        return new PlaybackEventRecord
+        {
+            InternalSessionKey = InternalSessionKey,
+            EventType = NotificationEventType.Progress,
+            Timestamp = now,
+            MediaTitle = MediaTitle,
+            SeriesName = SeriesName,
+            SeasonNumber = SeasonNumber,
+            EpisodeNumber = EpisodeNumber,
+            ProductionYear = ProductionYear,
+            ItemType = ItemType,
+            CommunityRating = CommunityRating,
+            CriticRating = CriticRating,
+            OfficialRating = OfficialRating,
+            Genres = Genres,
+            ImdbId = ImdbId,
+            UserId = UserId,
+            Username = Username,
+            ClientName = ClientName,
+            DeviceName = DeviceName,
+            ApplicationVersion = ApplicationVersion,
+            PlayMethod = PlayMethod,
+            IsPaused = IsPaused,
+            Position = projectedPosition,
+            TotalDuration = TotalDuration,
+            PlaybackPercentage = projectedPercentage,
+            IsVideoDirect = IsVideoDirect,
+            IsAudioDirect = IsAudioDirect,
+            IsContainerRemux = IsContainerRemux,
+            VideoStatus = VideoStatus,
+            AudioStatus = AudioStatus,
+            VideoCodec = VideoCodec,
+            AudioCodec = AudioCodec,
+            SourceContainer = SourceContainer,
+            Container = Container,
+            Resolution = Resolution,
+            DynamicRange = DynamicRange,
+            FrameRate = FrameRate,
+            TranscodeSpeed = TranscodeSpeed,
+            AudioChannels = AudioChannels,
+            AudioLanguage = AudioLanguage,
+            SubtitleLanguage = SubtitleLanguage,
+            Bitrate = Bitrate,
+            TranscodeEngine = TranscodeEngine,
+            TranscodeReasons = TranscodeReasons,
+            TranscodeReasonsWhy = TranscodeReasonsWhy,
+            PlayedToCompletion = PlayedToCompletion,
+            PrimaryImagePath = PrimaryImagePath
+        };
+    }
+
+    /// <summary>
     /// Projects this internal event record to the strict outbound allow-listed DTO.
     /// Strictly excludes RemoteEndPoint, IP addresses, internal session identifiers,
     /// file paths, auth tokens, and raw session objects.

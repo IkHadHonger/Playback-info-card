@@ -140,10 +140,33 @@ public class DeliveryQueueTests
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         var queued = await service.DequeueDiscordLiveUpdateForTesting(cts.Token);
         Assert.NotNull(queued);
-        Assert.Equal(TimeSpan.FromMinutes(11), queued.Position);
+        Assert.Equal(TimeSpan.FromMinutes(11.5), queued.Position);
 
         Assert.Equal(0, service.FlushDiscordLiveUpdates(startedAt.AddMinutes(1).AddSeconds(59)));
         Assert.Equal(1, service.FlushDiscordLiveUpdates(startedAt.AddMinutes(2)));
+    }
+
+    [Fact]
+    public async Task DiscordLiveScheduler_ProjectsFromStartWhenClientEmitsNoProgressEvents()
+    {
+        using var service = new NotificationDeliveryService(
+            new TestLogger<NotificationDeliveryService>(),
+            new NoOpDiscordWebhookSender(),
+            new NoOpTelegramBotApiSender(),
+            new NoOpNotificationSecretStore());
+
+        var startedAt = new DateTimeOffset(2026, 9, 28, 20, 0, 0, TimeSpan.Zero);
+        var start = CreateRecord(NotificationEventType.Start, "silent-client", positionTicks: 0);
+
+        service.ScheduleDiscordLiveUpdateForTesting(start, startedAt);
+        Assert.Equal(1, service.FlushDiscordLiveUpdates(startedAt.AddMinutes(1)));
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        var queued = await service.DequeueDiscordLiveUpdateForTesting(cts.Token);
+        Assert.NotNull(queued);
+        Assert.Equal(NotificationEventType.Progress, queued.EventType);
+        Assert.Equal(TimeSpan.FromMinutes(1), queued.Position);
+        Assert.Equal(2, queued.PlaybackPercentage);
     }
 
     [Fact]

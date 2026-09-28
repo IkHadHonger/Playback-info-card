@@ -13,7 +13,7 @@
                     <div class="playbackMonitorTitleGroup">
                         <div class="playbackMonitorTitleRow">
                             <h2 class="sectionTitle playbackMonitorTitle">PlayInfo</h2>
-                            <span class="playbackMonitorVersionBadge">v0.2.7.16</span>
+                            <span class="playbackMonitorVersionBadge">v0.2.7.17</span>
                         </div>
                         <p class="playbackMonitorDescription">Real-time playback telemetry reported by Jellyfin. Local &amp; privacy-first.</p>
                     </div>
@@ -322,7 +322,7 @@
                     <div class="diagnosticsGrid">
                         <div class="diagItem">
                             <span class="diagLabel">Plugin Version</span>
-                            <span id="diagPluginVersion" class="diagValue">0.2.7.16</span>
+                            <span id="diagPluginVersion" class="diagValue">0.2.7.17</span>
                         </div>
                         <div class="diagItem">
                             <span class="diagLabel">Server Version</span>
@@ -2628,7 +2628,7 @@
         window.__playbackInfoCardMonitorController.dispose();
     }
 
-    var PLUGIN_VERSION = '0.2.7.16';
+    var PLUGIN_VERSION = '0.2.7.17';
     var POLL_INTERVAL_MS = 3000;
     var STALE_THRESHOLD_MS = POLL_INTERVAL_MS * 2; // Stale if > 6s without update
 
@@ -4229,6 +4229,7 @@
             var isPaused = classification.isPaused;
             var badgeClass = classification.badgeClass;
             var badgeText = classification.badgeText;
+            var headerBadgeText = classification.method === 'DirectStream' ? 'Stream' : badgeText;
             var isVideoDirect = classification.isVideoDirect;
             var isAudioDirect = classification.isAudioDirect;
 
@@ -4734,7 +4735,7 @@
                                 '</div>' +
                             '</div>' +
                             '<div class="playback-badge-group">' +
-                                '<span class="playback-badge ' + badgeClass + '">' + stateIcon + ' ' + badgeText + '</span>' +
+                                '<span class="playback-badge ' + badgeClass + '" title="Playback method: ' + escapeHtml(badgeText) + '">' + stateIcon + ' ' + escapeHtml(headerBadgeText) + '</span>' +
                                 sessionActionsHtml +
                                 infoBtnHtml +
                             '</div>' +
