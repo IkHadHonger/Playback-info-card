@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/IkHadHonger/Playback-info-card/main/banner.png",
     "versions": [
       {
+        "version": "0.2.7.10",
+        "changelog": "PlayInfo cards now prefer wide Jellyfin fanart/backdrops, with a non-stretched poster fallback, and card actions wrap instead of being clipped. Discord and Telegram gain colored progress bars; Discord places user/client details first; source frame rate and transcoder speed are reported separately. Jellyfin 12.1 compatibility and notification delivery are preserved. 193 C# tests and 169 JavaScript UI tests pass, and the release artifact passes ClamAV.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/IkHadHonger/Playback-info-card/releases/download/v0.2.7.10/jellyfin-plugin-playbackcard.zip",
+        "checksum": "8f7186a7187ced01012a030df21f4207",
+        "timestamp": "2026-09-28T17:04:34Z"
+      },
+      {
         "version": "0.2.7.9",
         "changelog": "Richer Discord and Telegram playback cards with genres, age classification, runtime, clickable IMDb links, codec/resolution/HDR/bitrate/audio-channel details, a clearer transcode warning, and a visual progress bar. Optional OMDb enrichment adds IMDb ratings and vote counts, with automatic fallback to Jellyfin community ratings and IMDb IDs. Jellyfin 12.1 compatibility and existing notification delivery are preserved. All 191 tests pass.",
         "targetAbi": "12.1.0.0",
