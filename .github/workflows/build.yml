@@ -35,6 +35,9 @@ jobs:
     - name: Run C# Tests
       run: dotnet test --configuration Release --no-build
 
+    - name: Run JavaScript UI Tests
+      run: node --test tests/playbackcard.test.js
+
     - name: Package Plugin Artifacts
       run: |
         mkdir -p output
@@ -84,4 +87,3 @@ jobs:
           MD5SUMS.txt
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
