@@ -819,6 +819,9 @@
     align-items: center;
     justify-content: center;
     transition: flex-basis 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
 }
 
 /* Poster width tiers -- large while the details panel is closed, small once it's open
@@ -830,6 +833,20 @@
 
 .playbackMonitorPage .playback-poster-wrap.poster-sm {
     flex-basis: 90px;
+}
+
+/* A single stream has enough horizontal room for uncropped fanart. `contain` keeps
+   the original proportions intact; dark side gutters are preferable to distortion.
+   Multi-stream cards omit this class and continue to show their portrait posters. */
+.playbackMonitorPage .playback-poster-wrap.single-stream-backdrop {
+    background-color: #080c12;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+}
+
+.playbackMonitorPage .playback-poster-wrap.single-stream-backdrop .playback-poster {
+    opacity: 0;
 }
 
 /* When Show Details is open, the card grows well past a natural poster height -- letting
@@ -1957,6 +1974,11 @@
         flex: 0 0 auto;
         width: 100%;
         height: 150px;
+    }
+
+    .playbackMonitorPage .playback-poster {
+        object-fit: contain;
+        object-position: center;
     }
 
     .playbackMonitorPage .playback-badge-group {
@@ -3346,11 +3368,34 @@
 
     function extractDynamicRangePill(videoStream) {
         if (!videoStream) return '';
-        var range = (videoStream.VideoRange || videoStream.VideoRangeType || '').toUpperCase();
-        if (range.indexOf('DOVI') !== -1 || range.indexOf('DOLBY') !== -1) return 'DV';
-        if (range.indexOf('HDR10+') !== -1) return 'HDR10+';
-        if (range.indexOf('HDR') !== -1) return 'HDR';
+        var range = [
+            videoStream.VideoRangeType,
+            videoStream.VideoRange,
+            videoStream.VideoDoViTitle,
+            videoStream.DisplayTitle,
+            videoStream.Title,
+            videoStream.Profile,
+            videoStream.DvProfile != null ? 'DOVI' : '',
+            videoStream.RpuPresentFlag === true ? 'DOVI RPU' : ''
+        ].filter(Boolean).join(' ').toUpperCase();
+        if (range.indexOf('DOVI') !== -1 || range.indexOf('DOLBY VISION') !== -1 || range.indexOf('DVHE') !== -1 || range.indexOf('DVAV') !== -1 || range.indexOf('DVA1') !== -1) {
+            var profile = Number(videoStream.DvProfile) || 0;
+            var level = Number(videoStream.DvLevel) || 0;
+            var profileMatch = range.match(/(?:PROFILE|\bP)\s*(\d+)(?:\.(\d+))?/);
+            if (!profile && profileMatch) profile = Number(profileMatch[1]) || 0;
+            if (!level && profileMatch && profileMatch[2]) level = Number(profileMatch[2]) || 0;
+            var details = [];
+            if (/\bFEL\b/.test(range)) details.push('FEL');
+            else if (/\bMEL\b/.test(range)) details.push('MEL');
+            else if (videoStream.ElPresentFlag === true || range.indexOf('WITHEL') !== -1) details.push('EL');
+            if (range.indexOf('HDR10+') !== -1 || range.indexOf('HDR10PLUS') !== -1 || range.indexOf('HDR10 PLUS') !== -1) details.push('HDR10+');
+            else if (range.indexOf('HDR10') !== -1) details.push('HDR10');
+            return 'DV' + (profile ? ' P' + profile + (level ? '.' + level : '') : '') + (details.length ? ' (' + details.join(' · ') + ')' : '');
+        }
+        if (range.indexOf('HDR10+') !== -1 || range.indexOf('HDR10PLUS') !== -1 || range.indexOf('HDR10 PLUS') !== -1) return 'HDR10+';
+        if (range.indexOf('HDR10') !== -1) return 'HDR10';
         if (range.indexOf('HLG') !== -1) return 'HLG';
+        if (range.indexOf('HDR') !== -1) return 'HDR';
         return '';
     }
 
@@ -4649,6 +4694,9 @@
             var backdropUrl = art.backdropUrl;
 
             var backdropStyle = backdropUrl ? ' style="background-image: url(\'' + escapeHtml(backdropUrl) + '\');"' : '';
+            var useSingleStreamBackdrop = Boolean(backdropUrl && Array.isArray(allSessions) && allSessions.length === 1);
+            var posterBackdropClass = useSingleStreamBackdrop ? ' single-stream-backdrop' : '';
+            var posterBackdropStyle = useSingleStreamBackdrop ? ' style="background-image: url(\'' + escapeHtml(backdropUrl) + '\');"' : '';
             var posterHtml = '';
             if (posterUrl) {
                 posterHtml = '<img class="playback-poster" data-artwork-role="poster" src="' + escapeHtml(posterUrl) + '" alt="' + title + '" onload="window.__playbackCardImgLoad && window.__playbackCardImgLoad(true)" onerror="window.__playbackCardImgLoad && window.__playbackCardImgLoad(false, this)" />';
@@ -4674,7 +4722,7 @@
 
             return '<div class="playback-card" data-card-id="' + escapeHtml(cardDomId) + '" data-playback-method="' + escapeHtml(classification.method) + '">' +
                 '<div class="playback-card-backdrop"' + backdropStyle + '></div>' +
-                '<div class="playback-poster-wrap ' + posterSizeCls + '">' + posterHtml + brandBadgeHtml + '</div>' +
+                '<div class="playback-poster-wrap ' + posterSizeCls + posterBackdropClass + '"' + posterBackdropStyle + '>' + posterHtml + brandBadgeHtml + '</div>' +
                 '<div class="playback-card-inner">' +
                     '<div class="playback-card-main">' +
                         '<div class="playback-card-header">' +

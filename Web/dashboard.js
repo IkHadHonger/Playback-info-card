@@ -143,11 +143,34 @@
 
     function extractDynamicRangePill(videoStream) {
         if (!videoStream) return '';
-        var range = (videoStream.VideoRange || videoStream.VideoRangeType || '').toUpperCase();
-        if (range.indexOf('DOVI') !== -1 || range.indexOf('DOLBY') !== -1) return 'DV';
-        if (range.indexOf('HDR10+') !== -1) return 'HDR10+';
-        if (range.indexOf('HDR') !== -1) return 'HDR';
+        var range = [
+            videoStream.VideoRangeType,
+            videoStream.VideoRange,
+            videoStream.VideoDoViTitle,
+            videoStream.DisplayTitle,
+            videoStream.Title,
+            videoStream.Profile,
+            videoStream.DvProfile != null ? 'DOVI' : '',
+            videoStream.RpuPresentFlag === true ? 'DOVI RPU' : ''
+        ].filter(Boolean).join(' ').toUpperCase();
+        if (range.indexOf('DOVI') !== -1 || range.indexOf('DOLBY VISION') !== -1 || range.indexOf('DVHE') !== -1 || range.indexOf('DVAV') !== -1 || range.indexOf('DVA1') !== -1) {
+            var profile = Number(videoStream.DvProfile) || 0;
+            var level = Number(videoStream.DvLevel) || 0;
+            var profileMatch = range.match(/(?:PROFILE|\bP)\s*(\d+)(?:\.(\d+))?/);
+            if (!profile && profileMatch) profile = Number(profileMatch[1]) || 0;
+            if (!level && profileMatch && profileMatch[2]) level = Number(profileMatch[2]) || 0;
+            var details = [];
+            if (/\bFEL\b/.test(range)) details.push('FEL');
+            else if (/\bMEL\b/.test(range)) details.push('MEL');
+            else if (videoStream.ElPresentFlag === true || range.indexOf('WITHEL') !== -1) details.push('EL');
+            if (range.indexOf('HDR10+') !== -1 || range.indexOf('HDR10PLUS') !== -1 || range.indexOf('HDR10 PLUS') !== -1) details.push('HDR10+');
+            else if (range.indexOf('HDR10') !== -1) details.push('HDR10');
+            return 'DV' + (profile ? ' P' + profile + (level ? '.' + level : '') : '') + (details.length ? ' (' + details.join(' · ') + ')' : '');
+        }
+        if (range.indexOf('HDR10+') !== -1 || range.indexOf('HDR10PLUS') !== -1 || range.indexOf('HDR10 PLUS') !== -1) return 'HDR10+';
+        if (range.indexOf('HDR10') !== -1) return 'HDR10';
         if (range.indexOf('HLG') !== -1) return 'HLG';
+        if (range.indexOf('HDR') !== -1) return 'HDR';
         return '';
     }
 
