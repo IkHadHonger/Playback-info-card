@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/IkHadHonger/Playback-info-card/main/banner.png",
     "versions": [
       {
+        "version": "0.2.7.14",
+        "changelog": "Discord now updates one playback message in place every 60 seconds, with pause, resume, stop, and completion editing that same message. Series notifications use the series poster and movies use the movie poster. PlayInfo uses uncropped fanart for one active stream and posters for multiple streams. Dynamic-range badges distinguish Dolby Vision, HDR10+, HDR10, HLG, and HDR; Dolby Vision includes the reported profile, level, enhancement layer, and HDR base layer without guessing FEL or MEL. Jellyfin 12.1 compatibility and existing notification delivery are preserved. 195 C# tests and 170 JavaScript UI tests pass, and the release artifact passes ClamAV.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/IkHadHonger/Playback-info-card/releases/download/v0.2.7.14/jellyfin-plugin-playbackcard.zip",
+        "checksum": "062b956e34cb9995479d8e11c586844c",
+        "timestamp": "2026-09-28T19:45:59Z"
+      },
+      {
         "version": "0.2.7.13",
         "changelog": "Discord progress now shows a colored segment for every positive percentage, including early values such as 2–4%, while exactly 0% remains empty. The PlayInfo page uses portrait posters again and keeps fanart only as the ambient card background, with poster proportions preserved. Retains 24-hour ETA, hidden Discord source FPS, Jellyfin 12.1 compatibility, and existing notification delivery. 193 C# tests and 169 JavaScript UI tests pass, and the release artifact passes ClamAV.",
         "targetAbi": "12.1.0.0",
