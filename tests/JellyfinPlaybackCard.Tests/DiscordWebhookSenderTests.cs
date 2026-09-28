@@ -26,6 +26,8 @@ public class DiscordWebhookSenderTests
             ImdbId = "tt0816692",
             ImdbRating = "8.7",
             ImdbVoteCount = 2200000,
+            Username = "alice",
+            ClientName = "Jellyfin Web",
             PlayMethod = "DirectPlay",
             Resolution = "4K",
             VideoCodec = "HEVC",
@@ -318,7 +320,7 @@ public class DiscordWebhookSenderTests
     }
 
     [Fact]
-    public void BuildDiscordJsonPayload_RendersRichMetadataImdbLinkAndProgressBar()
+    public void BuildDiscordJsonPayload_RendersRichMetadataImdbLinkAndThinProgressLine()
     {
         var json = DiscordWebhookSender.BuildDiscordJsonPayload(CreateSamplePayload());
         using var doc = JsonDocument.Parse(json);
@@ -342,13 +344,17 @@ public class DiscordWebhookSenderTests
         Assert.Contains("HDR10", allValues);
         Assert.Contains("7.1", allValues);
         Assert.Contains("42.5 Mbps", allValues);
-        Assert.Contains("🟩", allValues);
-        Assert.Contains("⬛", allValues);
+        Assert.Contains("🟠 **User:**", allValues);
+        Assert.DoesNotContain("23.98 fps", allValues);
+        Assert.Contains("━━", allValues);
+        Assert.Contains("──", allValues);
+        Assert.DoesNotContain("🟩", allValues);
+        Assert.DoesNotContain("⬛", allValues);
         Assert.Contains("10%", allValues);
     }
 
     [Fact]
-    public void BuildDiscordJsonPayload_UsesOrangeProgressAndSeparatesTranscodeSpeed()
+    public void BuildDiscordJsonPayload_HidesSourceFpsAndKeepsTranscodeSpeedSeparate()
     {
         var payload = new PlaybackNotificationPayload
         {
@@ -373,11 +379,14 @@ public class DiscordWebhookSenderTests
         var allValues = string.Empty;
         foreach (var field in fields.EnumerateArray()) allValues += field.GetProperty("value").GetString();
 
-        Assert.Contains("23.98 fps", allValues);
+        Assert.DoesNotContain("23.98 fps", allValues);
         Assert.Contains("Transcode speed:** 336 fps", allValues);
-        Assert.Contains("🟧🟧", allValues);
-        Assert.Contains("⬛", allValues);
+        Assert.Contains("━━━━", allValues);
+        Assert.Contains("────", allValues);
+        Assert.DoesNotContain("🟧", allValues);
+        Assert.DoesNotContain("⬛", allValues);
         Assert.Contains("18%", allValues);
+        Assert.True(fields.GetArrayLength() >= 5, "Expected spacer fields between the information sections.");
     }
 
     [Fact]
