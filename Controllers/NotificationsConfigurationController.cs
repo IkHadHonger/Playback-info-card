@@ -248,6 +248,27 @@ public class NotificationsConfigurationController : ControllerBase
             }
         }
 
+        // 4. Handle optional OMDb API key. When absent or unavailable the notification renderer
+        // automatically falls back to Jellyfin's community rating and public IMDb ID.
+        if (request.ClearOmdbApiKey == true || string.Equals(request.OmdbApiKey, "[CLEAR]", StringComparison.OrdinalIgnoreCase))
+        {
+            _secretStore.ClearOmdbApiKey();
+        }
+        else if (!string.IsNullOrWhiteSpace(request.OmdbApiKey))
+        {
+            var trimmedApiKey = request.OmdbApiKey.Trim();
+            if (!SecretRedactor.IsMasked(trimmedApiKey))
+            {
+                if (!MediaRatingService.ValidateApiKey(trimmedApiKey))
+                {
+                    Plugin.Instance?.SaveConfiguration();
+                    return BadRequest(new { error = "InvalidConfiguration", message = "Invalid OMDb API key format." });
+                }
+
+                _secretStore.SetOmdbApiKey(trimmedApiKey);
+            }
+        }
+
         Plugin.Instance?.SaveConfiguration();
 
         return Ok(ToDto(config));
@@ -303,6 +324,7 @@ public class NotificationsConfigurationController : ControllerBase
     {
         var discordWebhook = _secretStore.GetDiscordWebhookUrl();
         var telegramToken = _secretStore.GetTelegramBotToken();
+        var omdbApiKey = _secretStore.GetOmdbApiKey();
 
         return new NotificationConfigurationDto
         {
@@ -314,6 +336,8 @@ public class NotificationsConfigurationController : ControllerBase
             HasTelegramBotToken = !string.IsNullOrWhiteSpace(telegramToken),
             TelegramBotTokenMasked = SecretRedactor.MaskTelegramToken(telegramToken),
             TelegramChatId = config.TelegramChatId,
+            HasOmdbApiKey = !string.IsNullOrWhiteSpace(omdbApiKey),
+            OmdbApiKeyMasked = SecretRedactor.MaskApiKey(omdbApiKey),
             NotifyOnStart = config.NotifyOnStart,
             NotifyOnStop = config.NotifyOnStop,
             NotifyOnPauseResume = config.NotifyOnPauseResume,
@@ -369,6 +393,11 @@ public sealed class NotificationConfigurationDto
     public string TelegramBotTokenMasked { get; init; } = string.Empty;
     [JsonPropertyName("telegramChatId")]
     public string TelegramChatId { get; init; } = string.Empty;
+
+    [JsonPropertyName("hasOmdbApiKey")]
+    public bool HasOmdbApiKey { get; init; }
+    [JsonPropertyName("omdbApiKeyMasked")]
+    public string OmdbApiKeyMasked { get; init; } = string.Empty;
 
     [JsonPropertyName("notifyOnStart")]
     public bool NotifyOnStart { get; init; }
@@ -436,6 +465,9 @@ public sealed class UpdateNotificationConfigurationRequest
     public bool? ClearTelegramBotToken { get; set; }
     public string? TelegramChatId { get; set; }
 
+    public string? OmdbApiKey { get; set; }
+    public bool? ClearOmdbApiKey { get; set; }
+
     public bool? NotifyOnStart { get; set; }
     public bool? NotifyOnPlaybackStart { get; set; }
     public bool? NotifyOnStop { get; set; }
@@ -467,3 +499,4 @@ public sealed class SendTestNotificationRequest
 {
     public string Destination { get; set; } = string.Empty;
 }
+

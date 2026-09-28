@@ -51,6 +51,42 @@ public sealed class PlaybackNotificationPayload
     public string ItemType { get; init; } = string.Empty;
 
     /// <summary>
+    /// Community rating stored by Jellyfin (0-10), used as the offline fallback.
+    /// </summary>
+    public float? CommunityRating { get; init; }
+
+    /// <summary>
+    /// Critic rating stored by Jellyfin (0-100), when available.
+    /// </summary>
+    public float? CriticRating { get; init; }
+
+    /// <summary>
+    /// Content/age classification stored by Jellyfin.
+    /// </summary>
+    public string? OfficialRating { get; init; }
+
+    /// <summary>
+    /// Media genres stored by Jellyfin.
+    /// </summary>
+    public IReadOnlyList<string> Genres { get; init; } = Array.Empty<string>();
+
+    /// <summary>
+    /// Public IMDb title identifier, when Jellyfin has one.
+    /// </summary>
+    public string? ImdbId { get; init; }
+
+    /// <summary>
+    /// IMDb rating returned by OMDb. Mutable only so the bounded enrichment service can attach
+    /// optional external metadata immediately before delivery.
+    /// </summary>
+    public string? ImdbRating { get; set; }
+
+    /// <summary>
+    /// IMDb vote count returned by OMDb.
+    /// </summary>
+    public int? ImdbVoteCount { get; set; }
+
+    /// <summary>
     /// Jellyfin username. Included ONLY when UsernameDisclosure is explicitly enabled.
     /// </summary>
     public string? Username { get; init; }
@@ -201,6 +237,12 @@ public sealed class PlaybackNotificationPayload
         Timestamp = DateTimeOffset.UtcNow,
         MediaTitle = "Synthetic Test Stream (2026)",
         ItemType = "Movie",
+        CommunityRating = 8.2f,
+        OfficialRating = "PG-13",
+        Genres = new[] { "Science Fiction", "Adventure" },
+        ImdbId = "tt1234567",
+        ImdbRating = "8.2",
+        ImdbVoteCount = 125000,
         PlayMethod = "DirectPlay",
         Position = TimeSpan.FromMinutes(12),
         TotalDuration = TimeSpan.FromHours(2),
@@ -219,3 +261,4 @@ public sealed class PlaybackNotificationPayload
         TranscodeReasonsWhy = "Reason not reported by server"
     };
 }
+

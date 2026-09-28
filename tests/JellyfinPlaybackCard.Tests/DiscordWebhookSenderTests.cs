@@ -20,10 +20,19 @@ public class DiscordWebhookSenderTests
             MediaTitle = "Interstellar",
             ProductionYear = 2014,
             ItemType = "Movie",
+            CommunityRating = 8.6f,
+            OfficialRating = "PG-13",
+            Genres = new[] { "Adventure", "Drama", "Science Fiction" },
+            ImdbId = "tt0816692",
+            ImdbRating = "8.7",
+            ImdbVoteCount = 2200000,
             PlayMethod = "DirectPlay",
             Resolution = "4K",
             VideoCodec = "HEVC",
             AudioCodec = "TrueHD Atmos",
+            DynamicRange = "HDR10",
+            AudioChannels = "7.1",
+            Bitrate = 42_500_000,
             Container = "mkv",
             IsPaused = false,
             Position = TimeSpan.Zero,
@@ -300,10 +309,58 @@ public class DiscordWebhookSenderTests
 
         Assert.True(totalChars <= 6000, $"Combined embed character count {totalChars} exceeded Discord limit of 6000");
 
-        // Assert core fields are preserved even under severe budget pressure
-        Assert.Contains("Stream", fieldNames);
-        Assert.Contains("Video", fieldNames);
-        Assert.Contains("Audio", fieldNames);
+        // Assert compact high-priority sections are preserved even under severe budget pressure
+        Assert.Contains("▶️ Playback", fieldNames);
+        Assert.Contains("🎞️ Media", fieldNames);
+        Assert.Contains("⚠️ Transcoding required", fieldNames);
+        Assert.Contains("Progress", fieldNames);
+    }
+
+    [Fact]
+    public void BuildDiscordJsonPayload_RendersRichMetadataImdbLinkAndProgressBar()
+    {
+        var json = DiscordWebhookSender.BuildDiscordJsonPayload(CreateSamplePayload());
+        using var doc = JsonDocument.Parse(json);
+        var embed = doc.RootElement.GetProperty("embeds")[0];
+        var description = embed.GetProperty("description").GetString() ?? string.Empty;
+
+        Assert.Contains("[Interstellar](https://www.imdb.com/title/tt0816692/)", description);
+        Assert.Contains("IMDb 8.7/10", description);
+        Assert.Contains("2,200,000 votes", description);
+        Assert.Contains("Adventure, Drama, Science Fiction", description);
+        Assert.Contains("PG-13", description);
+        Assert.Contains("2h 0m", description);
+
+        var fields = embed.GetProperty("fields");
+        var allValues = fields.ToString();
+        Assert.Contains("HEVC", allValues);
+        Assert.Contains("HDR10", allValues);
+        Assert.Contains("7.1", allValues);
+        Assert.Contains("42.5 Mbps", allValues);
+        Assert.Contains("░░░", allValues);
+        Assert.Contains("0%", allValues);
+    }
+
+    [Fact]
+    public void BuildDiscordJsonPayload_FallsBackToJellyfinRatingAndImdbId()
+    {
+        var payload = new PlaybackNotificationPayload
+        {
+            EventType = NotificationEventType.Start,
+            Timestamp = DateTimeOffset.UtcNow,
+            MediaTitle = "Fallback Movie",
+            CommunityRating = 7.4f,
+            ImdbId = "tt1234567",
+            PlayMethod = "DirectPlay",
+            VideoStatus = "Video Direct",
+            AudioStatus = "Audio Direct"
+        };
+
+        var json = DiscordWebhookSender.BuildDiscordJsonPayload(payload);
+        using var doc = JsonDocument.Parse(json);
+        var description = doc.RootElement.GetProperty("embeds")[0].GetProperty("description").GetString() ?? string.Empty;
+        Assert.Contains("Jellyfin 7.4/10", description);
+        Assert.Contains("https://www.imdb.com/title/tt1234567/", description);
     }
 
     [Fact]
@@ -331,3 +388,4 @@ public class DiscordWebhookSenderTests
         Assert.Equal("InvalidResponse", result.Category);
     }
 }
+

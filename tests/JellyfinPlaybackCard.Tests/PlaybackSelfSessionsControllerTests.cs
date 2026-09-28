@@ -37,19 +37,24 @@ public class MockSecretStore : INotificationSecretStore
 {
     public string DiscordWebhookUrl { get; set; } = "";
     public string TelegramBotToken { get; set; } = "";
+    public string OmdbApiKey { get; set; } = "";
 
     public string GetDiscordWebhookUrl() => DiscordWebhookUrl;
     public void SetDiscordWebhookUrl(string url) => DiscordWebhookUrl = url;
     public string GetTelegramBotToken() => TelegramBotToken;
     public void SetTelegramBotToken(string token) => TelegramBotToken = token;
+    public string GetOmdbApiKey() => OmdbApiKey;
+    public void SetOmdbApiKey(string apiKey) => OmdbApiKey = apiKey;
     public void ClearDiscordWebhookUrl() => DiscordWebhookUrl = "";
     public void ClearTelegramBotToken() => TelegramBotToken = "";
-    public void ClearAll() { DiscordWebhookUrl = ""; TelegramBotToken = ""; }
+    public void ClearOmdbApiKey() => OmdbApiKey = "";
+    public void ClearAll() { DiscordWebhookUrl = ""; TelegramBotToken = ""; OmdbApiKey = ""; }
     public IReadOnlyList<string> GetConfiguredSecrets()
     {
         var list = new List<string>();
         if (!string.IsNullOrEmpty(DiscordWebhookUrl)) list.Add(DiscordWebhookUrl);
         if (!string.IsNullOrEmpty(TelegramBotToken)) list.Add(TelegramBotToken);
+        if (!string.IsNullOrEmpty(OmdbApiKey)) list.Add(OmdbApiKey);
         return list;
     }
     public void Reload() { }

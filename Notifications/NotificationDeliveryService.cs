@@ -19,6 +19,7 @@ public sealed class NotificationDeliveryService : BackgroundService, INotificati
     private readonly IDiscordWebhookSender _discordSender;
     private readonly ITelegramBotApiSender _telegramSender;
     private readonly INotificationSecretStore _secretStore;
+    private readonly IMediaRatingService? _mediaRatingService;
 
     private readonly DestinationQueue _discordQueue;
     private readonly DestinationQueue _telegramQueue;
@@ -47,12 +48,14 @@ public sealed class NotificationDeliveryService : BackgroundService, INotificati
         ILogger<NotificationDeliveryService> logger,
         IDiscordWebhookSender discordSender,
         ITelegramBotApiSender telegramSender,
-        INotificationSecretStore secretStore)
+        INotificationSecretStore secretStore,
+        IMediaRatingService? mediaRatingService = null)
     {
         _logger = logger;
         _discordSender = discordSender;
         _telegramSender = telegramSender;
         _secretStore = secretStore;
+        _mediaRatingService = mediaRatingService;
 
         _discordQueue = new DestinationQueue("Discord", capacity: 100, reservedCritical: 20);
         _telegramQueue = new DestinationQueue("Telegram", capacity: 100, reservedCritical: 20);
@@ -323,6 +326,14 @@ public sealed class NotificationDeliveryService : BackgroundService, INotificati
 
                 var payload = record.ToOutboundPayload(config.UsernameDisclosure, config.ClientDeviceDisclosure);
                 var posterImagePath = config.IncludePosterImage ? record.PrimaryImagePath : null;
+
+                // Optional enrichment is deliberately fail-open: the service handles timeouts,
+                // invalid responses, and caching internally, while the payload already contains
+                // Jellyfin's community rating and IMDb ID as an offline fallback.
+                if (_mediaRatingService != null)
+                {
+                    await _mediaRatingService.EnrichAsync(payload, _secretStore.GetOmdbApiKey(), stoppingToken).ConfigureAwait(false);
+                }
 
                 _lastAttemptTimestamp = DateTimeOffset.UtcNow;
                 var result = await send(payload, config, posterImagePath, stoppingToken).ConfigureAwait(false);
@@ -602,3 +613,4 @@ public sealed class NotificationDeliveryService : BackgroundService, INotificati
         }
     }
 }
+

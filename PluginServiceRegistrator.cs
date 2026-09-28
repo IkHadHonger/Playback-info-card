@@ -24,6 +24,7 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         // Register HTTP notification senders
         serviceCollection.AddSingleton<IDiscordWebhookSender, DiscordWebhookSender>();
         serviceCollection.AddSingleton<ITelegramBotApiSender, TelegramBotApiSender>();
+        serviceCollection.AddSingleton<IMediaRatingService, MediaRatingService>();
 
         // Strictly opt-in (off by default): resolves a session's remote IP into a safe
         // Local Network/Remote(+city/country) label without ever exposing the raw address.
@@ -47,3 +48,4 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddTransient<Microsoft.AspNetCore.Hosting.IStartupFilter, PlaybackCardStartupFilter>();
     }
 }
+

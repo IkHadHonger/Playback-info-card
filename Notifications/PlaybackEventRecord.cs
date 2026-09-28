@@ -57,6 +57,31 @@ public sealed class PlaybackEventRecord
     public string ItemType { get; init; } = string.Empty;
 
     /// <summary>
+    /// Community rating stored by Jellyfin (0-10), used when OMDb enrichment is unavailable.
+    /// </summary>
+    public float? CommunityRating { get; init; }
+
+    /// <summary>
+    /// Critic rating stored by Jellyfin (0-100), when available.
+    /// </summary>
+    public float? CriticRating { get; init; }
+
+    /// <summary>
+    /// Content/age classification stored by Jellyfin.
+    /// </summary>
+    public string? OfficialRating { get; init; }
+
+    /// <summary>
+    /// Media genres stored by Jellyfin.
+    /// </summary>
+    public IReadOnlyList<string> Genres { get; init; } = Array.Empty<string>();
+
+    /// <summary>
+    /// Public IMDb title identifier, when Jellyfin has one.
+    /// </summary>
+    public string? ImdbId { get; init; }
+
+    /// <summary>
     /// Jellyfin user ID.
     /// </summary>
     public string? UserId { get; init; }
@@ -232,6 +257,11 @@ public sealed class PlaybackEventRecord
             EpisodeNumber = EpisodeNumber,
             ProductionYear = ProductionYear,
             ItemType = ItemType,
+            CommunityRating = CommunityRating,
+            CriticRating = CriticRating,
+            OfficialRating = OfficialRating,
+            Genres = Genres,
+            ImdbId = ImdbId,
             Username = includeUsername ? Username : null,
             ClientName = includeClientDevice ? ClientName : null,
             DeviceName = includeClientDevice ? DeviceName : null,
@@ -263,3 +293,4 @@ public sealed class PlaybackEventRecord
         };
     }
 }
+

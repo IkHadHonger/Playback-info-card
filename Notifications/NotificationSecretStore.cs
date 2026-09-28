@@ -20,8 +20,11 @@ public interface INotificationSecretStore
     void SetDiscordWebhookUrl(string url);
     string GetTelegramBotToken();
     void SetTelegramBotToken(string token);
+    string GetOmdbApiKey();
+    void SetOmdbApiKey(string apiKey);
     void ClearDiscordWebhookUrl();
     void ClearTelegramBotToken();
+    void ClearOmdbApiKey();
     void ClearAll();
     IReadOnlyList<string> GetConfiguredSecrets();
     void Reload();
@@ -483,6 +486,11 @@ public sealed class NotificationSecretStore : INotificationSecretStore
                 SecretRedactor.RegisterConfiguredSecret(_data.TelegramBotToken.Substring(colonIdx + 1));
             }
         }
+
+        if (!string.IsNullOrWhiteSpace(_data.OmdbApiKey))
+        {
+            SecretRedactor.RegisterConfiguredSecret(_data.OmdbApiKey);
+        }
     }
 
     public string GetDiscordWebhookUrl()
@@ -519,6 +527,23 @@ public sealed class NotificationSecretStore : INotificationSecretStore
         }
     }
 
+    public string GetOmdbApiKey()
+    {
+        lock (_lock)
+        {
+            return _data.OmdbApiKey ?? string.Empty;
+        }
+    }
+
+    public void SetOmdbApiKey(string apiKey)
+    {
+        lock (_lock)
+        {
+            _data.OmdbApiKey = apiKey?.Trim() ?? string.Empty;
+            Save();
+        }
+    }
+
     public void ClearDiscordWebhookUrl()
     {
         lock (_lock)
@@ -537,12 +562,22 @@ public sealed class NotificationSecretStore : INotificationSecretStore
         }
     }
 
+    public void ClearOmdbApiKey()
+    {
+        lock (_lock)
+        {
+            _data.OmdbApiKey = string.Empty;
+            Save();
+        }
+    }
+
     public void ClearAll()
     {
         lock (_lock)
         {
             _data.DiscordWebhookUrl = string.Empty;
             _data.TelegramBotToken = string.Empty;
+            _data.OmdbApiKey = string.Empty;
             Save();
         }
     }
@@ -554,6 +589,7 @@ public sealed class NotificationSecretStore : INotificationSecretStore
             var list = new List<string>();
             if (!string.IsNullOrWhiteSpace(_data.DiscordWebhookUrl)) list.Add(_data.DiscordWebhookUrl);
             if (!string.IsNullOrWhiteSpace(_data.TelegramBotToken)) list.Add(_data.TelegramBotToken);
+            if (!string.IsNullOrWhiteSpace(_data.OmdbApiKey)) list.Add(_data.OmdbApiKey);
             return list;
         }
     }
@@ -665,6 +701,7 @@ public sealed class NotificationSecretStore : INotificationSecretStore
     {
         public string DiscordWebhookUrl { get; set; } = string.Empty;
         public string TelegramBotToken { get; set; } = string.Empty;
+        public string OmdbApiKey { get; set; } = string.Empty;
     }
 
     internal static class WindowsDpapi
@@ -784,3 +821,4 @@ public sealed class NotificationSecretStore : INotificationSecretStore
         }
     }
 }
+

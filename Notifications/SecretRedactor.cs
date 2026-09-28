@@ -168,6 +168,14 @@ public static class SecretRedactor
     }
 
     /// <summary>
+    /// Masks a generic API key without exposing its length or any key characters.
+    /// </summary>
+    public static string MaskApiKey(string? apiKey)
+    {
+        return string.IsNullOrWhiteSpace(apiKey) ? string.Empty : "••••••••••••••••";
+    }
+
+    /// <summary>
     /// Determines whether a string is a masked credential from UI placeholders or responses.
     /// Prevents writing masked values back into the encrypted secret store.
     /// </summary>
@@ -203,3 +211,4 @@ public static class SecretRedactor
         return sanitized;
     }
 }
+

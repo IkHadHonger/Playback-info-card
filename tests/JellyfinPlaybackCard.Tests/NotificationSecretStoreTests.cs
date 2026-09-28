@@ -44,6 +44,7 @@ public class NotificationSecretStoreTests : IDisposable
 
         Assert.Empty(store.GetDiscordWebhookUrl());
         Assert.Empty(store.GetTelegramBotToken());
+        Assert.Empty(store.GetOmdbApiKey());
         Assert.Empty(store.GetConfiguredSecrets());
     }
 
@@ -53,22 +54,27 @@ public class NotificationSecretStoreTests : IDisposable
         var store1 = new NotificationSecretStore(customFilePath: _tempFile);
         var webhook = "https://discord.com/api/webhooks/123456789/mySecretDiscordToken";
         var botToken = "123456789:mySecretTelegramToken";
+        var omdbApiKey = "omdbKey123456";
 
         store1.SetDiscordWebhookUrl(webhook);
         store1.SetTelegramBotToken(botToken);
+        store1.SetOmdbApiKey(omdbApiKey);
 
         Assert.Equal(webhook, store1.GetDiscordWebhookUrl());
         Assert.Equal(botToken, store1.GetTelegramBotToken());
+        Assert.Equal(omdbApiKey, store1.GetOmdbApiKey());
         Assert.True(File.Exists(_tempFile));
 
         // Create a new store instance pointing to the same file to verify reload
         var store2 = new NotificationSecretStore(customFilePath: _tempFile);
         Assert.Equal(webhook, store2.GetDiscordWebhookUrl());
         Assert.Equal(botToken, store2.GetTelegramBotToken());
+        Assert.Equal(omdbApiKey, store2.GetOmdbApiKey());
 
         var secrets = store2.GetConfiguredSecrets();
         Assert.Contains(webhook, secrets);
         Assert.Contains(botToken, secrets);
+        Assert.Contains(omdbApiKey, secrets);
     }
 
     [Fact]
@@ -92,14 +98,20 @@ public class NotificationSecretStoreTests : IDisposable
         var store = new NotificationSecretStore(customFilePath: _tempFile);
         store.SetDiscordWebhookUrl("https://discord.com/api/webhooks/111/token111");
         store.SetTelegramBotToken("12345:token222");
+        store.SetOmdbApiKey("omdbSecret333");
 
         store.ClearDiscordWebhookUrl();
         Assert.Empty(store.GetDiscordWebhookUrl());
         Assert.Equal("12345:token222", store.GetTelegramBotToken());
+        Assert.Equal("omdbSecret333", store.GetOmdbApiKey());
+
+        store.ClearOmdbApiKey();
+        Assert.Empty(store.GetOmdbApiKey());
 
         store.ClearAll();
         Assert.Empty(store.GetDiscordWebhookUrl());
         Assert.Empty(store.GetTelegramBotToken());
+        Assert.Empty(store.GetOmdbApiKey());
         Assert.Empty(store.GetConfiguredSecrets());
     }
 
@@ -109,9 +121,11 @@ public class NotificationSecretStoreTests : IDisposable
         var store = new NotificationSecretStore(customFilePath: _tempFile);
         var webhook = "https://discord.com/api/webhooks/999888777/VerySecretWebhookToken12345";
         var botToken = "999888777:VerySecretTelegramBotToken67890";
+        var omdbApiKey = "VerySecretOmdbKey24680";
 
         store.SetDiscordWebhookUrl(webhook);
         store.SetTelegramBotToken(botToken);
+        store.SetOmdbApiKey(omdbApiKey);
 
         Assert.True(File.Exists(_tempFile));
         var keyFile = Path.ChangeExtension(_tempFile, ".key");
@@ -129,6 +143,7 @@ public class NotificationSecretStoreTests : IDisposable
         var rawText = System.Text.Encoding.UTF8.GetString(rawBytes);
         Assert.DoesNotContain("VerySecretWebhookToken12345", rawText);
         Assert.DoesNotContain("VerySecretTelegramBotToken67890", rawText);
+        Assert.DoesNotContain("VerySecretOmdbKey24680", rawText);
 
         // Key file must be 32 bytes (256 bits)
         var keyBytes = File.ReadAllBytes(keyFile);
@@ -422,3 +437,4 @@ public class NotificationSecretStoreTests : IDisposable
         Assert.Equal(originalEncryptedBytes, afterBytes);
     }
 }
+

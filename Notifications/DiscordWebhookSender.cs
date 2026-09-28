@@ -30,6 +30,7 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
     private static readonly Regex MentionStripRegex = new(@"@(everyone|here)|<@&?\d+>|<#\d+>", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex NumericIdRegex = new(@"^\d+$", RegexOptions.Compiled);
     private static readonly Regex TokenRegex = new(@"^[a-zA-Z0-9_\-]+$", RegexOptions.Compiled);
+    private static readonly Regex ImdbIdRegex = new(@"^tt[0-9]{7,10}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private readonly HttpClient _httpClient;
     private readonly bool _ownsClient;
@@ -352,16 +353,70 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
         var description = new StringBuilder();
         if (!string.IsNullOrEmpty(payload.SeriesName))
         {
-            description.Append("**").Append(SafeTruncate(payload.SeriesName, 200)).Append("**\n");
+            description.Append("**").Append(EscapeMarkdown(payload.SeriesName)).Append("**\n");
             if (payload.SeasonNumber.HasValue && payload.EpisodeNumber.HasValue)
             {
                 description.Append(CultureInfo.InvariantCulture, $"S{payload.SeasonNumber:D2}E{payload.EpisodeNumber:D2} — ");
             }
         }
-        description.Append(SafeTruncate(payload.MediaTitle, 200));
+
+        var displayTitle = EscapeMarkdown(payload.MediaTitle);
+        var imdbUrl = BuildImdbUrl(payload.ImdbId);
+        if (!string.IsNullOrEmpty(imdbUrl))
+        {
+            description.Append('[').Append(displayTitle).Append("](").Append(imdbUrl).Append(')');
+        }
+        else
+        {
+            description.Append(displayTitle);
+        }
+
         if (payload.ProductionYear.HasValue && payload.ProductionYear > 0)
         {
             description.Append(CultureInfo.InvariantCulture, $" ({payload.ProductionYear})");
+        }
+
+        var ratingParts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(payload.ImdbRating))
+        {
+            var votes = payload.ImdbVoteCount.HasValue ? $" · {FormatVoteCount(payload.ImdbVoteCount.Value)} votes" : string.Empty;
+            ratingParts.Add($"⭐ **IMDb {EscapeMarkdown(payload.ImdbRating)}/10**{votes}");
+        }
+        else if (payload.CommunityRating.HasValue)
+        {
+            ratingParts.Add($"⭐ **Jellyfin {payload.CommunityRating.Value.ToString("0.0", CultureInfo.InvariantCulture)}/10**");
+        }
+
+        if (!string.IsNullOrEmpty(imdbUrl))
+        {
+            ratingParts.Add($"[IMDb]({imdbUrl})");
+        }
+
+        if (ratingParts.Count > 0)
+        {
+            description.Append("\n").Append(string.Join(" · ", ratingParts));
+        }
+
+        var metadataParts = new List<string>();
+        if (payload.Genres.Count > 0)
+        {
+            var genres = new List<string>();
+            foreach (var genre in payload.Genres)
+            {
+                if (!string.IsNullOrWhiteSpace(genre) && genres.Count < 3)
+                {
+                    genres.Add(EscapeMarkdown(genre));
+                }
+            }
+
+            if (genres.Count > 0) metadataParts.Add(string.Join(", ", genres));
+        }
+
+        if (!string.IsNullOrWhiteSpace(payload.OfficialRating)) metadataParts.Add(EscapeMarkdown(payload.OfficialRating));
+        if (payload.TotalDuration.HasValue && payload.TotalDuration.Value > TimeSpan.Zero) metadataParts.Add(FormatRuntime(payload.TotalDuration.Value));
+        if (metadataParts.Count > 0)
+        {
+            description.Append("\n").Append(string.Join(" • ", metadataParts));
         }
 
         var color = payload.EventType switch
@@ -378,55 +433,54 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
             }
         };
 
-        // Construct candidate fields ordered by priority (Core fields first)
+        // Keep the information hierarchy compact: one playback block, one media block,
+        // an explicit warning only while transcoding, and one full-width progress block.
         var coreFields = new List<DiscordField>();
         var secondaryFields = new List<DiscordField>();
 
-        // Core fields: Stream Method, Video Status, Audio Status, Transcode Reasons
-        coreFields.Add(new DiscordField("Stream", payload.PlayMethod, true));
-        coreFields.Add(new DiscordField("Video", payload.VideoStatus, true));
-        coreFields.Add(new DiscordField("Audio", payload.AudioStatus, true));
+        var playbackLines = new List<string>
+        {
+            $"**Stream:** {SafeValue(payload.PlayMethod)}",
+            $"**Video:** {SafeValue(payload.VideoStatus)}",
+            $"**Audio:** {SafeValue(payload.AudioStatus)}"
+        };
+        if (!string.IsNullOrWhiteSpace(payload.Username)) playbackLines.Add($"**User:** {SafeValue(payload.Username)}");
+        if (!string.IsNullOrWhiteSpace(payload.ClientName))
+        {
+            var client = string.IsNullOrWhiteSpace(payload.DeviceName) ? payload.ClientName : $"{payload.ClientName} ({payload.DeviceName})";
+            playbackLines.Add($"**Client:** {SafeValue(client)}");
+        }
+
+        coreFields.Add(new DiscordField("▶️ Playback", string.Join("\n", playbackLines), true));
+
+        var mediaLines = new List<string>();
+        var videoParts = JoinParts(payload.VideoCodec, payload.Resolution, payload.DynamicRange, payload.FrameRate);
+        if (!string.IsNullOrEmpty(videoParts)) mediaLines.Add($"**Video:** {videoParts}");
+        var audioParts = JoinParts(payload.AudioCodec, payload.AudioChannels, payload.AudioLanguage);
+        if (!string.IsNullOrEmpty(audioParts)) mediaLines.Add($"**Audio:** {audioParts}");
+        if (!string.IsNullOrWhiteSpace(payload.Container))
+        {
+            var container = !string.IsNullOrWhiteSpace(payload.SourceContainer) && !payload.SourceContainer.Equals(payload.Container, StringComparison.OrdinalIgnoreCase)
+                ? $"{payload.SourceContainer.ToUpperInvariant()} → {payload.Container.ToUpperInvariant()}"
+                : payload.Container.ToUpperInvariant();
+            mediaLines.Add($"**Container:** {SafeValue(container)}");
+        }
+        if (payload.Bitrate.HasValue && payload.Bitrate.Value > 0) mediaLines.Add($"**Bitrate:** {FormatBitrate(payload.Bitrate.Value)}");
+        if (!string.IsNullOrWhiteSpace(payload.SubtitleLanguage)) mediaLines.Add($"**Subtitles:** {SafeValue(payload.SubtitleLanguage)}");
+        if (mediaLines.Count > 0) coreFields.Add(new DiscordField("🎞️ Media", string.Join("\n", mediaLines), true));
 
         if (!string.IsNullOrEmpty(payload.TranscodeReasonsWhy) &&
             !payload.TranscodeReasonsWhy.Equals("Reason not reported by server", StringComparison.OrdinalIgnoreCase))
         {
-            var engine = !string.IsNullOrEmpty(payload.TranscodeEngine) ? $" [{payload.TranscodeEngine}]" : "";
-            coreFields.Add(new DiscordField("Transcode Reason", $"{payload.TranscodeReasonsWhy}{engine}", false));
-        }
-
-        // Secondary fields: User, Client, Progress, Codecs/Format
-        if (!string.IsNullOrEmpty(payload.Username))
-        {
-            secondaryFields.Add(new DiscordField("User", payload.Username, true));
-        }
-
-        if (!string.IsNullOrEmpty(payload.ClientName))
-        {
-            var clientStr = string.IsNullOrEmpty(payload.DeviceName) ? payload.ClientName : $"{payload.ClientName} ({payload.DeviceName})";
-            secondaryFields.Add(new DiscordField("Client", clientStr, true));
-        }
-
-        if (!string.IsNullOrEmpty(payload.Resolution) || !string.IsNullOrEmpty(payload.VideoCodec))
-        {
-            var vid = $"{payload.VideoCodec ?? ""} {payload.Resolution ?? ""}".Trim();
-            if (!string.IsNullOrEmpty(payload.DynamicRange)) vid += $" • {payload.DynamicRange}";
-            secondaryFields.Add(new DiscordField("Format", vid, true));
-        }
-
-        if (!string.IsNullOrEmpty(payload.Container))
-        {
-            var cStr = !string.IsNullOrEmpty(payload.SourceContainer) && !payload.SourceContainer.Equals(payload.Container, StringComparison.OrdinalIgnoreCase)
-                ? $"{payload.SourceContainer.ToUpperInvariant()} → {payload.Container.ToUpperInvariant()}"
-                : payload.Container.ToUpperInvariant();
-            secondaryFields.Add(new DiscordField("Container", cStr, true));
+            var engine = !string.IsNullOrEmpty(payload.TranscodeEngine) ? $"\n**Engine:** {SafeValue(payload.TranscodeEngine)}" : string.Empty;
+            coreFields.Add(new DiscordField("⚠️ Transcoding required", $"**Why:** {SafeValue(payload.TranscodeReasonsWhy)}{engine}", false));
         }
 
         if (payload.TotalDuration.HasValue && payload.TotalDuration.Value > TimeSpan.Zero)
         {
             var pos = FormatDuration(payload.Position);
             var dur = FormatDuration(payload.TotalDuration.Value);
-            var pct = payload.PlaybackPercentage.HasValue ? $" ({payload.PlaybackPercentage}%)" : "";
-            secondaryFields.Add(new DiscordField("Progress", $"{pos} / {dur}{pct}", true));
+            secondaryFields.Add(new DiscordField("Progress", $"{BuildProgressBar(payload.PlaybackPercentage)}\n`{pos} / {dur}`", false));
         }
 
         // Combine fields respecting 25 field limit and 6000 character total limit
@@ -508,6 +562,61 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
     private static string FormatDuration(TimeSpan ts)
     {
         return string.Format(CultureInfo.InvariantCulture, "{0:D2}:{1:D2}:{2:D2}", (int)ts.TotalHours, ts.Minutes, ts.Seconds);
+    }
+
+    private static string? BuildImdbUrl(string? imdbId)
+    {
+        var value = imdbId?.Trim();
+        return ImdbIdRegex.IsMatch(value ?? string.Empty) ? $"https://www.imdb.com/title/{value}/" : null;
+    }
+
+    private static string EscapeMarkdown(string? input)
+    {
+        return (input ?? string.Empty)
+            .Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("[", "\\[", StringComparison.Ordinal)
+            .Replace("]", "\\]", StringComparison.Ordinal)
+            .Replace("*", "\\*", StringComparison.Ordinal)
+            .Replace("_", "\\_", StringComparison.Ordinal)
+            .Replace("`", "\\`", StringComparison.Ordinal);
+    }
+
+    private static string SafeValue(string? value) => EscapeMarkdown(string.IsNullOrWhiteSpace(value) ? "Unavailable" : value.Trim());
+
+    private static string JoinParts(params string?[] values)
+    {
+        var parts = new List<string>();
+        foreach (var value in values)
+        {
+            if (!string.IsNullOrWhiteSpace(value)) parts.Add(SafeValue(value));
+        }
+
+        return string.Join(" • ", parts);
+    }
+
+    private static string FormatVoteCount(int votes) => votes.ToString("N0", CultureInfo.InvariantCulture);
+
+    private static string FormatRuntime(TimeSpan runtime)
+    {
+        var hours = (int)runtime.TotalHours;
+        return hours > 0
+            ? string.Format(CultureInfo.InvariantCulture, "{0}h {1}m", hours, runtime.Minutes)
+            : string.Format(CultureInfo.InvariantCulture, "{0}m", Math.Max(1, runtime.Minutes));
+    }
+
+    private static string FormatBitrate(long bitrate)
+    {
+        return bitrate >= 1_000_000
+            ? (bitrate / 1_000_000d).ToString("0.0", CultureInfo.InvariantCulture) + " Mbps"
+            : (bitrate / 1_000d).ToString("0", CultureInfo.InvariantCulture) + " kbps";
+    }
+
+    private static string BuildProgressBar(int? percentage)
+    {
+        var pct = Math.Clamp(percentage ?? 0, 0, 100);
+        const int segments = 12;
+        var filled = (int)Math.Round(pct / 100d * segments, MidpointRounding.AwayFromZero);
+        return new string('▓', filled) + new string('░', segments - filled) + $"  **{pct}%**";
     }
 
     /// <summary>
@@ -747,3 +856,4 @@ internal static class WebhookSenderRetryHelper
         return Math.Min(30000, baseMs + jitter);
     }
 }
+

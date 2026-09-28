@@ -115,6 +115,19 @@ public static class PlaybackEventMapper
         int? episodeNumber = null;
         int? productionYear = item?.ProductionYear;
         var itemType = item?.GetType().Name ?? "Unknown";
+        var communityRating = item?.CommunityRating;
+        var criticRating = item?.CriticRating;
+        var officialRating = item?.OfficialRating;
+        IReadOnlyList<string> genres = item?.Genres ?? Array.Empty<string>();
+        string? imdbId = null;
+
+        if (item?.ProviderIds != null &&
+            item.ProviderIds.TryGetValue("Imdb", out var mappedImdbId) &&
+            !string.IsNullOrWhiteSpace(mappedImdbId) &&
+            System.Text.RegularExpressions.Regex.IsMatch(mappedImdbId, "^tt[0-9]{7,10}$", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+        {
+            imdbId = mappedImdbId.ToLowerInvariant();
+        }
 
         if (item is Episode episode)
         {
@@ -295,6 +308,11 @@ public static class PlaybackEventMapper
             EpisodeNumber = episodeNumber,
             ProductionYear = productionYear,
             ItemType = itemType,
+            CommunityRating = communityRating,
+            CriticRating = criticRating,
+            OfficialRating = officialRating,
+            Genres = genres,
+            ImdbId = imdbId,
             UserId = userId,
             Username = username,
             ClientName = clientName,
@@ -386,3 +404,4 @@ public static class PlaybackEventMapper
         return string.Join(", ", mapped);
     }
 }
+

@@ -39,8 +39,11 @@ public class DeliveryQueueTests
         public void SetDiscordWebhookUrl(string url) { }
         public string GetTelegramBotToken() => string.Empty;
         public void SetTelegramBotToken(string token) { }
+        public string GetOmdbApiKey() => string.Empty;
+        public void SetOmdbApiKey(string apiKey) { }
         public void ClearDiscordWebhookUrl() { }
         public void ClearTelegramBotToken() { }
+        public void ClearOmdbApiKey() { }
         public void ClearAll() { }
         public System.Collections.Generic.IReadOnlyList<string> GetConfiguredSecrets() => Array.Empty<string>();
         public void Reload() { }
@@ -301,3 +304,4 @@ public class DeliveryQueueTests
         Assert.Equal(0, service.GetDiagnostics().TelegramQueueDepth);
     }
 }
+

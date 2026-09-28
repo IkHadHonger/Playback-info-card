@@ -30,6 +30,7 @@ public sealed class TelegramBotApiSender : ITelegramBotApiSender, IDisposable
     private static readonly Regex TokenFormatRegex = new(@"^[0-9]+:[a-zA-Z0-9_\-]+$", RegexOptions.Compiled);
     private static readonly Regex NumericChatIdRegex = new(@"^-?[0-9]{1,20}$", RegexOptions.Compiled);
     private static readonly Regex ChannelUsernameRegex = new(@"^@[a-zA-Z0-9_]{5,32}$", RegexOptions.Compiled);
+    private static readonly Regex ImdbIdRegex = new(@"^tt[0-9]{7,10}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private readonly HttpClient _httpClient;
     private readonly bool _ownsClient;
@@ -405,6 +406,50 @@ public sealed class TelegramBotApiSender : ITelegramBotApiSender, IDisposable
             sb.Append('\n');
         }
 
+        var imdbId = payload.ImdbId?.Trim();
+        var hasImdbLink = ImdbIdRegex.IsMatch(imdbId ?? string.Empty);
+        if (!string.IsNullOrWhiteSpace(payload.ImdbRating))
+        {
+            sb.Append("⭐ <b>IMDb ").Append(EscapeHtml(payload.ImdbRating)).Append("/10</b>");
+            if (payload.ImdbVoteCount.HasValue)
+            {
+                sb.Append(" · ").Append(payload.ImdbVoteCount.Value.ToString("N0", CultureInfo.InvariantCulture)).Append(" votes");
+            }
+            if (hasImdbLink) sb.Append(" · <a href=\"https://www.imdb.com/title/").Append(imdbId).Append("/\">IMDb</a>");
+            sb.Append('\n');
+        }
+        else if (payload.CommunityRating.HasValue || hasImdbLink)
+        {
+            if (payload.CommunityRating.HasValue)
+            {
+                sb.Append("⭐ <b>Jellyfin ").Append(payload.CommunityRating.Value.ToString("0.0", CultureInfo.InvariantCulture)).Append("/10</b>");
+            }
+            if (payload.CommunityRating.HasValue && hasImdbLink) sb.Append(" · ");
+            if (hasImdbLink) sb.Append("<a href=\"https://www.imdb.com/title/").Append(imdbId).Append("/\">IMDb</a>");
+            sb.Append('\n');
+        }
+
+        var meta = new List<string>();
+        if (payload.Genres.Count > 0)
+        {
+            var genreLimit = Math.Min(3, payload.Genres.Count);
+            var genres = new List<string>();
+            for (var i = 0; i < genreLimit; i++)
+            {
+                if (!string.IsNullOrWhiteSpace(payload.Genres[i])) genres.Add(EscapeHtml(payload.Genres[i]));
+            }
+            if (genres.Count > 0) meta.Add(string.Join(", ", genres));
+        }
+        if (!string.IsNullOrWhiteSpace(payload.OfficialRating)) meta.Add(EscapeHtml(payload.OfficialRating));
+        if (payload.TotalDuration.HasValue && payload.TotalDuration.Value > TimeSpan.Zero)
+        {
+            var runtime = payload.TotalDuration.Value;
+            meta.Add((int)runtime.TotalHours > 0
+                ? string.Format(CultureInfo.InvariantCulture, "{0}h {1}m", (int)runtime.TotalHours, runtime.Minutes)
+                : string.Format(CultureInfo.InvariantCulture, "{0}m", Math.Max(1, runtime.Minutes)));
+        }
+        if (meta.Count > 0) sb.Append(string.Join(" • ", meta)).Append("\n\n");
+
         if (!string.IsNullOrEmpty(payload.Username))
         {
             sb.Append("<b>User:</b> ").Append(EscapeHtml(payload.Username)).Append('\n');
@@ -446,15 +491,17 @@ public sealed class TelegramBotApiSender : ITelegramBotApiSender, IDisposable
         {
             var pos = FormatDuration(payload.Position);
             var dur = FormatDuration(payload.TotalDuration.Value);
-            var pct = payload.PlaybackPercentage.HasValue ? $" ({payload.PlaybackPercentage}%)" : "";
-            sb.Append("<b>Progress:</b> ").Append(CultureInfo.InvariantCulture, $"{pos} / {dur}{pct}\n");
+            var pct = Math.Clamp(payload.PlaybackPercentage ?? 0, 0, 100);
+            var filled = (int)Math.Round(pct / 100d * 12, MidpointRounding.AwayFromZero);
+            sb.Append("<b>Progress:</b> ").Append(new string('▓', filled)).Append(new string('░', 12 - filled))
+                .Append(CultureInfo.InvariantCulture, $" {pct}%\n{pos} / {dur}\n");
         }
 
         if (!string.IsNullOrEmpty(payload.TranscodeReasonsWhy) &&
             !payload.TranscodeReasonsWhy.Equals("Reason not reported by server", StringComparison.OrdinalIgnoreCase))
         {
             var engine = !string.IsNullOrEmpty(payload.TranscodeEngine) ? $" [{payload.TranscodeEngine}]" : "";
-            sb.Append("<b>Transcode Reason:</b> ").Append(EscapeHtml(payload.TranscodeReasonsWhy + engine)).Append('\n');
+            sb.Append("⚠️ <b>Transcoding required</b>\n<b>Why:</b> ").Append(EscapeHtml(payload.TranscodeReasonsWhy + engine)).Append('\n');
         }
 
         return TruncateHtmlSafely(sb.ToString(), 4096);
@@ -619,3 +666,4 @@ public sealed class TelegramBotApiSender : ITelegramBotApiSender, IDisposable
         return null;
     }
 }
+

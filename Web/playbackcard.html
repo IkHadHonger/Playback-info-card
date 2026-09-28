@@ -13,7 +13,7 @@
                     <div class="playbackMonitorTitleGroup">
                         <div class="playbackMonitorTitleRow">
                             <h2 class="sectionTitle playbackMonitorTitle">PlayInfo</h2>
-                            <span class="playbackMonitorVersionBadge">v0.2.7.7</span>
+                            <span class="playbackMonitorVersionBadge">v0.2.7.9</span>
                         </div>
                         <p class="playbackMonitorDescription">Real-time playback telemetry reported by Jellyfin. Local &amp; privacy-first.</p>
                     </div>
@@ -105,7 +105,7 @@
                             <div class="notifFieldGroup">
                                 <label class="notifFieldLabel" for="txtDiscordWebhookUrl">Webhook URL</label>
                                 <input type="password" id="txtDiscordWebhookUrl" class="notifInput" autocomplete="off" placeholder="https://discord.com/api/webhooks/••••••••">
-                                <span class="notifInputHint">Secrets are masked in responses and stored as server-local plaintext.</span>
+                                <span class="notifInputHint">Secrets are masked in responses and encrypted in the server-local secret store.</span>
                             </div>
                             <div class="notifBtnRow">
                                 <button type="button" id="btnSaveDiscord" class="btnNotifAction btnPrimary">Save Discord</button>
@@ -145,6 +145,23 @@
                                 <button type="button" id="btnSaveTelegram" class="btnNotifAction btnPrimary">Save Telegram</button>
                                 <button type="button" id="btnClearTelegram" class="btnNotifAction btnDanger">Clear Secret</button>
                                 <button type="button" id="btnTestTelegram" class="btnNotifAction btnSecondary">Test Telegram</button>
+                            </div>
+                        </div>
+
+                        <!-- Optional IMDb rating enrichment -->
+                        <div class="notifDestCard">
+                            <div class="notifDestHeader">
+                                <div class="notifDestTitle">⭐ IMDb Ratings (Optional)</div>
+                                <span id="badgeOmdbStatus" class="notifBadge">Fallback active</span>
+                            </div>
+                            <div class="notifFieldGroup">
+                                <label class="notifFieldLabel" for="txtOmdbApiKey">OMDb API Key</label>
+                                <input type="password" id="txtOmdbApiKey" class="notifInput" autocomplete="off" placeholder="Enter an OMDb API key">
+                                <span class="notifInputHint">Adds the IMDb rating and vote count. Without a key, cards use Jellyfin's community rating and clickable IMDb ID.</span>
+                            </div>
+                            <div class="notifBtnRow">
+                                <button type="button" id="btnSaveOmdb" class="btnNotifAction btnPrimary">Save IMDb Key</button>
+                                <button type="button" id="btnClearOmdb" class="btnNotifAction btnDanger">Clear Key</button>
                             </div>
                         </div>
                     </div>
@@ -305,7 +322,7 @@
                     <div class="diagnosticsGrid">
                         <div class="diagItem">
                             <span class="diagLabel">Plugin Version</span>
-                            <span id="diagPluginVersion" class="diagValue">0.2.7.7</span>
+                            <span id="diagPluginVersion" class="diagValue">0.2.7.9</span>
                         </div>
                         <div class="diagItem">
                             <span class="diagLabel">Server Version</span>
@@ -2585,7 +2602,7 @@
         window.__playbackInfoCardMonitorController.dispose();
     }
 
-    var PLUGIN_VERSION = '0.2.7.7';
+    var PLUGIN_VERSION = '0.2.7.9';
     var POLL_INTERVAL_MS = 3000;
     var STALE_THRESHOLD_MS = POLL_INTERVAL_MS * 2; // Stale if > 6s without update
 
@@ -5449,6 +5466,8 @@
                 var txtTelegramToken = page.querySelector('#txtTelegramBotToken');
                 var txtTelegramChat = page.querySelector('#txtTelegramChatId');
                 var badgeTelegram = page.querySelector('#badgeTelegramStatus');
+                var txtOmdbApiKey = page.querySelector('#txtOmdbApiKey');
+                var badgeOmdb = page.querySelector('#badgeOmdbStatus');
 
                 var chkStart = page.querySelector('#chkNotifyOnStart');
                 var chkStop = page.querySelector('#chkNotifyOnStop');
@@ -5496,6 +5515,15 @@
                     var tgOk = data.hasTelegramBotToken && telegramChatIdSet;
                     badgeTelegram.textContent = data.telegramEnabled ? (tgOk ? 'Configured' : 'Missing Info') : 'Disabled';
                     badgeTelegram.className = 'notifBadge ' + (telegramReady ? 'status-ok' : 'status-disabled');
+                }
+
+                if (txtOmdbApiKey) {
+                    txtOmdbApiKey.value = '';
+                    if (data.omdbApiKeyMasked) txtOmdbApiKey.placeholder = data.omdbApiKeyMasked;
+                }
+                if (badgeOmdb) {
+                    badgeOmdb.textContent = data.hasOmdbApiKey ? 'IMDb enabled' : 'Fallback active';
+                    badgeOmdb.className = 'notifBadge ' + (data.hasOmdbApiKey ? 'status-ok' : 'status-disabled');
                 }
 
                 // Test can't do anything useful until the destination is enabled and has a
@@ -5637,6 +5665,11 @@
             for (var tk in telegramPrefs) {
                 if (Object.prototype.hasOwnProperty.call(telegramPrefs, tk)) payload[tk] = telegramPrefs[tk];
             }
+        } else if (section === 'omdb') {
+            var txtOmdbApiKey = page.querySelector('#txtOmdbApiKey');
+            if (txtOmdbApiKey && txtOmdbApiKey.value.trim().length > 0) {
+                payload.omdbApiKey = txtOmdbApiKey.value.trim();
+            }
         } else if (section === 'preferences') {
             var prefs = getPreferencesPayload(page);
             for (var pk in prefs) {
@@ -5658,6 +5691,7 @@
                     'telegram-toggle': 'Telegram switch',
                     discord: 'Discord settings',
                     telegram: 'Telegram settings',
+                    omdb: 'IMDb rating settings',
                     preferences: 'Preferences'
                 };
                 var name = sectionNames[section] || 'Notification settings';
@@ -5685,6 +5719,8 @@
         } else if (secretType === 'telegram') {
             payload.clearTelegramBotToken = true;
             payload.telegramEnabled = false;
+        } else if (secretType === 'omdb') {
+            payload.clearOmdbApiKey = true;
         }
 
         callNotificationApi('PlaybackCard/Notifications/Configuration', {
@@ -5839,6 +5875,20 @@
         if (btnTestTelegram) {
             btnTestTelegram.addEventListener('click', function () {
                 sendTestNotification(page, 'Telegram');
+            });
+        }
+
+        var btnSaveOmdb = page.querySelector('#btnSaveOmdb');
+        if (btnSaveOmdb) {
+            btnSaveOmdb.addEventListener('click', function () {
+                saveNotificationSettings(page, 'omdb');
+            });
+        }
+
+        var btnClearOmdb = page.querySelector('#btnClearOmdb');
+        if (btnClearOmdb) {
+            btnClearOmdb.addEventListener('click', function () {
+                clearNotificationSecret(page, 'omdb');
             });
         }
 
@@ -6206,3 +6256,4 @@
     </div>
 </body>
 </html>
+
