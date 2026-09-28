@@ -469,6 +469,7 @@ public sealed class TelegramBotApiSender : ITelegramBotApiSender, IDisposable
         {
             var vid = $"{payload.VideoCodec ?? ""} {payload.Resolution ?? ""}".Trim();
             if (!string.IsNullOrEmpty(payload.DynamicRange)) vid += $" • {payload.DynamicRange}";
+            if (!string.IsNullOrEmpty(payload.FrameRate)) vid += $" • {payload.FrameRate}";
             sb.Append("<b>Format:</b> ").Append(EscapeHtml(vid)).Append('\n');
         }
 
@@ -493,7 +494,8 @@ public sealed class TelegramBotApiSender : ITelegramBotApiSender, IDisposable
             var dur = FormatDuration(payload.TotalDuration.Value);
             var pct = Math.Clamp(payload.PlaybackPercentage ?? 0, 0, 100);
             var filled = (int)Math.Round(pct / 100d * 12, MidpointRounding.AwayFromZero);
-            sb.Append("<b>Progress:</b> ").Append(new string('▓', filled)).Append(new string('░', 12 - filled))
+            var fill = string.Equals(payload.PlayMethod, "Transcode", StringComparison.OrdinalIgnoreCase) ? "🟧" : "🟩";
+            sb.Append("<b>Progress:</b> ").Append(string.Concat(System.Linq.Enumerable.Repeat(fill, filled))).Append(string.Concat(System.Linq.Enumerable.Repeat("⬛", 12 - filled)))
                 .Append(CultureInfo.InvariantCulture, $" {pct}%\n{pos} / {dur}\n");
         }
 
@@ -502,6 +504,7 @@ public sealed class TelegramBotApiSender : ITelegramBotApiSender, IDisposable
         {
             var engine = !string.IsNullOrEmpty(payload.TranscodeEngine) ? $" [{payload.TranscodeEngine}]" : "";
             sb.Append("⚠️ <b>Transcoding required</b>\n<b>Why:</b> ").Append(EscapeHtml(payload.TranscodeReasonsWhy + engine)).Append('\n');
+            if (!string.IsNullOrEmpty(payload.TranscodeSpeed)) sb.Append("<b>Transcode speed:</b> ").Append(EscapeHtml(payload.TranscodeSpeed)).Append('\n');
         }
 
         return TruncateHtmlSafely(sb.ToString(), 4096);

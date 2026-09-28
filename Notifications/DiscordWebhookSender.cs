@@ -438,18 +438,16 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
         var coreFields = new List<DiscordField>();
         var secondaryFields = new List<DiscordField>();
 
-        var playbackLines = new List<string>
-        {
-            $"**Stream:** {SafeValue(payload.PlayMethod)}",
-            $"**Video:** {SafeValue(payload.VideoStatus)}",
-            $"**Audio:** {SafeValue(payload.AudioStatus)}"
-        };
+        var playbackLines = new List<string>();
         if (!string.IsNullOrWhiteSpace(payload.Username)) playbackLines.Add($"**User:** {SafeValue(payload.Username)}");
         if (!string.IsNullOrWhiteSpace(payload.ClientName))
         {
             var client = string.IsNullOrWhiteSpace(payload.DeviceName) ? payload.ClientName : $"{payload.ClientName} ({payload.DeviceName})";
             playbackLines.Add($"**Client:** {SafeValue(client)}");
         }
+        playbackLines.Add($"**Stream:** {SafeValue(payload.PlayMethod)}");
+        playbackLines.Add($"**Video:** {SafeValue(payload.VideoStatus)}");
+        playbackLines.Add($"**Audio:** {SafeValue(payload.AudioStatus)}");
 
         coreFields.Add(new DiscordField("▶️ Playback", string.Join("\n", playbackLines), true));
 
@@ -472,15 +470,17 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
         if (!string.IsNullOrEmpty(payload.TranscodeReasonsWhy) &&
             !payload.TranscodeReasonsWhy.Equals("Reason not reported by server", StringComparison.OrdinalIgnoreCase))
         {
-            var engine = !string.IsNullOrEmpty(payload.TranscodeEngine) ? $"\n**Engine:** {SafeValue(payload.TranscodeEngine)}" : string.Empty;
-            coreFields.Add(new DiscordField("⚠️ Transcoding required", $"**Why:** {SafeValue(payload.TranscodeReasonsWhy)}{engine}", false));
+            var transcodeDetails = new StringBuilder($"**Why:** {SafeValue(payload.TranscodeReasonsWhy)}");
+            if (!string.IsNullOrEmpty(payload.TranscodeEngine)) transcodeDetails.Append("\n**Engine:** ").Append(SafeValue(payload.TranscodeEngine));
+            if (!string.IsNullOrEmpty(payload.TranscodeSpeed)) transcodeDetails.Append("\n**Transcode speed:** ").Append(SafeValue(payload.TranscodeSpeed));
+            coreFields.Add(new DiscordField("⚠️ Transcoding required", transcodeDetails.ToString(), false));
         }
 
         if (payload.TotalDuration.HasValue && payload.TotalDuration.Value > TimeSpan.Zero)
         {
             var pos = FormatDuration(payload.Position);
             var dur = FormatDuration(payload.TotalDuration.Value);
-            secondaryFields.Add(new DiscordField("Progress", $"{BuildProgressBar(payload.PlaybackPercentage)}\n`{pos} / {dur}`", false));
+            secondaryFields.Add(new DiscordField("Progress", $"{BuildProgressBar(payload.PlaybackPercentage, payload.PlayMethod)}\n`{pos} / {dur}`", false));
         }
 
         // Combine fields respecting 25 field limit and 6000 character total limit
@@ -611,12 +611,15 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
             : (bitrate / 1_000d).ToString("0", CultureInfo.InvariantCulture) + " kbps";
     }
 
-    private static string BuildProgressBar(int? percentage)
+    private static string BuildProgressBar(int? percentage, string? playMethod)
     {
         var pct = Math.Clamp(percentage ?? 0, 0, 100);
-        const int segments = 12;
+        const int segments = 10;
         var filled = (int)Math.Round(pct / 100d * segments, MidpointRounding.AwayFromZero);
-        return new string('▓', filled) + new string('░', segments - filled) + $"  **{pct}%**";
+        var fill = string.Equals(playMethod, "Transcode", StringComparison.OrdinalIgnoreCase) ? "🟧" : "🟩";
+        return string.Concat(System.Linq.Enumerable.Repeat(fill, filled)) +
+               string.Concat(System.Linq.Enumerable.Repeat("⬛", segments - filled)) +
+               $"  **{pct}%**";
     }
 
     /// <summary>

@@ -172,6 +172,28 @@ public class PlaybackEventConsumerTests
     }
 
     [Fact]
+    public void PlaybackEventMapper_TranscoderFramerate_IsReportedAsSpeedNotMediaFramerate()
+    {
+        var session = new SessionInfo(null, null)
+        {
+            Id = "sess-fast-transcode",
+            PlayState = new PlayerStateInfo { PlayMethod = PlayMethod.Transcode },
+            TranscodingInfo = new TranscodingInfo
+            {
+                Framerate = 336,
+                IsVideoDirect = true,
+                IsAudioDirect = false
+            }
+        };
+
+        var record = PlaybackEventMapper.Map(NotificationEventType.Progress, session, new Movie { Name = "Fast encode" });
+
+        Assert.Equal("336 fps", record.TranscodeSpeed);
+        Assert.Null(record.FrameRate);
+        Assert.Equal("336 fps", record.ToOutboundPayload(false, false).TranscodeSpeed);
+    }
+
+    [Fact]
     public void PlaybackEventMapper_NullSessionAndItem_HandlesGracefullyWithoutThrowing()
     {
         var record = PlaybackEventMapper.Map(
@@ -246,3 +268,4 @@ public class PlaybackEventConsumerTests
         Assert.Equal(concurrency - 1, records.Count(r => r.EventType == NotificationEventType.Progress));
     }
 }
+

@@ -192,6 +192,12 @@ public sealed class PlaybackEventRecord
     public string? FrameRate { get; init; }
 
     /// <summary>
+    /// Current encoder throughput reported by Jellyfin while transcoding. This is not the
+    /// source video's frame rate and is therefore presented separately in notifications.
+    /// </summary>
+    public string? TranscodeSpeed { get; init; }
+
+    /// <summary>
     /// Audio channels label (e.g. 5.1, Stereo).
     /// </summary>
     public string? AudioChannels { get; init; }
@@ -283,6 +289,7 @@ public sealed class PlaybackEventRecord
             Resolution = Resolution,
             DynamicRange = DynamicRange,
             FrameRate = FrameRate,
+            TranscodeSpeed = TranscodeSpeed,
             AudioChannels = AudioChannels,
             AudioLanguage = AudioLanguage,
             SubtitleLanguage = SubtitleLanguage,

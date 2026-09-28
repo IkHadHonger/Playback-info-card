@@ -166,6 +166,7 @@ public static class PlaybackEventMapper
         string? resolution = null;
         string? dynamicRange = null;
         string? frameRate = null;
+        string? transcodeSpeed = null;
         string? audioChannels = null;
         string? audioLanguage = null;
         string? subtitleLanguage = null;
@@ -190,7 +191,10 @@ public static class PlaybackEventMapper
 
             if (tInfo.Framerate.HasValue && tInfo.Framerate.Value > 0)
             {
-                frameRate = string.Format(CultureInfo.InvariantCulture, "{0:F2} fps", tInfo.Framerate.Value);
+                // Jellyfin's TranscodingInfo.Framerate is encoder throughput, not the
+                // source video's frame rate. Keep it separate so values such as 336 fps
+                // are not presented as media metadata.
+                transcodeSpeed = string.Format(CultureInfo.InvariantCulture, "{0:F0} fps", tInfo.Framerate.Value);
             }
 
             if (tInfo.AudioChannels.HasValue)
@@ -261,16 +265,13 @@ public static class PlaybackEventMapper
                 {
                     dynamicRange = videoStream.VideoRange.ToString();
                 }
-                if (string.IsNullOrEmpty(frameRate))
+                if (videoStream.RealFrameRate.HasValue && videoStream.RealFrameRate.Value > 0)
                 {
-                    if (videoStream.RealFrameRate.HasValue && videoStream.RealFrameRate.Value > 0)
-                    {
-                        frameRate = string.Format(CultureInfo.InvariantCulture, "{0:F2} fps", videoStream.RealFrameRate.Value);
-                    }
-                    else if (videoStream.AverageFrameRate.HasValue && videoStream.AverageFrameRate.Value > 0)
-                    {
-                        frameRate = string.Format(CultureInfo.InvariantCulture, "{0:F2} fps", videoStream.AverageFrameRate.Value);
-                    }
+                    frameRate = string.Format(CultureInfo.InvariantCulture, "{0:0.##} fps", videoStream.RealFrameRate.Value);
+                }
+                else if (videoStream.AverageFrameRate.HasValue && videoStream.AverageFrameRate.Value > 0)
+                {
+                    frameRate = string.Format(CultureInfo.InvariantCulture, "{0:0.##} fps", videoStream.AverageFrameRate.Value);
                 }
             }
 
@@ -335,6 +336,7 @@ public static class PlaybackEventMapper
             Resolution = resolution,
             DynamicRange = dynamicRange,
             FrameRate = frameRate,
+            TranscodeSpeed = transcodeSpeed,
             AudioChannels = audioChannels,
             AudioLanguage = audioLanguage,
             SubtitleLanguage = subtitleLanguage,

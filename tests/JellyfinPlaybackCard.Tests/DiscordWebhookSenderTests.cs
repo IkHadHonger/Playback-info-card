@@ -31,6 +31,7 @@ public class DiscordWebhookSenderTests
             VideoCodec = "HEVC",
             AudioCodec = "TrueHD Atmos",
             DynamicRange = "HDR10",
+            FrameRate = "23.98 fps",
             AudioChannels = "7.1",
             Bitrate = 42_500_000,
             Container = "mkv",
@@ -341,8 +342,42 @@ public class DiscordWebhookSenderTests
         Assert.Contains("HDR10", allValues);
         Assert.Contains("7.1", allValues);
         Assert.Contains("42.5 Mbps", allValues);
-        Assert.Contains("░░░", allValues);
+        Assert.Contains("🟩", allValues);
+        Assert.Contains("⬛", allValues);
         Assert.Contains("0%", allValues);
+    }
+
+    [Fact]
+    public void BuildDiscordJsonPayload_UsesOrangeProgressAndSeparatesTranscodeSpeed()
+    {
+        var payload = new PlaybackNotificationPayload
+        {
+            EventType = NotificationEventType.Progress,
+            Timestamp = DateTimeOffset.UtcNow,
+            MediaTitle = "Transcoded Movie",
+            PlayMethod = "Transcode",
+            VideoStatus = "Video Direct",
+            AudioStatus = "Audio Transcoded",
+            FrameRate = "23.98 fps",
+            TranscodeSpeed = "336 fps",
+            TranscodeEngine = "qsv",
+            TranscodeReasonsWhy = "Audio codec unsupported",
+            Position = TimeSpan.FromMinutes(18),
+            TotalDuration = TimeSpan.FromMinutes(100),
+            PlaybackPercentage = 18
+        };
+
+        var json = DiscordWebhookSender.BuildDiscordJsonPayload(payload);
+        using var doc = JsonDocument.Parse(json);
+        var fields = doc.RootElement.GetProperty("embeds")[0].GetProperty("fields");
+        var allValues = string.Empty;
+        foreach (var field in fields.EnumerateArray()) allValues += field.GetProperty("value").GetString();
+
+        Assert.Contains("23.98 fps", allValues);
+        Assert.Contains("Transcode speed:** 336 fps", allValues);
+        Assert.Contains("🟧🟧", allValues);
+        Assert.Contains("⬛", allValues);
+        Assert.Contains("18%", allValues);
     }
 
     [Fact]

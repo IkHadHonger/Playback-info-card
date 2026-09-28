@@ -192,6 +192,12 @@ public sealed class PlaybackNotificationPayload
     public string? FrameRate { get; init; }
 
     /// <summary>
+    /// Current transcoder throughput reported by Jellyfin (for example 336 fps).
+    /// Kept separate from the source media frame rate.
+    /// </summary>
+    public string? TranscodeSpeed { get; init; }
+
+    /// <summary>
     /// Audio channels label.
     /// </summary>
     public string? AudioChannels { get; init; }
