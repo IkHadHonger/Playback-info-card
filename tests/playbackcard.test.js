@@ -47,7 +47,7 @@ function createMockDashboard() {
     return mockModule.exports;
 }
 
-describe('Playback Info Card v0.2.7.17 Test Suite', () => {
+describe('Playback Info Card v0.2.7.18 Test Suite', () => {
     let controller;
 
     beforeEach(() => {
@@ -55,9 +55,9 @@ describe('Playback Info Card v0.2.7.17 Test Suite', () => {
     });
 
     describe('1. Diagnostics Panel States', () => {
-        it('initializes with default waiting state and version 0.2.7.17', () => {
-            assert.equal(controller.version, '0.2.7.17');
-            assert.equal(controller.diagState.pluginVersion, '0.2.7.17');
+        it('initializes with default waiting state and version 0.2.7.18', () => {
+            assert.equal(controller.version, '0.2.7.18');
+            assert.equal(controller.diagState.pluginVersion, '0.2.7.18');
             assert.equal(controller.diagState.sessionsApiStatus, 'Waiting for sessions');
             assert.equal(controller.diagState.pollingState, 'active');
             assert.equal(controller.diagState.lastErrorCategory, 'OK');
@@ -209,11 +209,13 @@ describe('Playback Info Card v0.2.7.17 Test Suite', () => {
             assert.equal(reportLoaded.artwork, 'loaded');
         });
 
-        it('keeps the full action group inside narrow cards by allowing it to wrap', () => {
+        it('keeps the full Direct Stream label and action group inside narrow cards', () => {
             assert.match(htmlContent, /\.playbackMonitorPage \.playback-badge-group\s*\{[^}]*flex-wrap:\s*wrap;/s);
             assert.match(htmlContent, /\.playbackMonitorPage \.playback-badge-group\s*\{[^}]*max-width:\s*100%;/s);
-            assert.ok(htmlContent.includes("classification.method === 'DirectStream' ? 'Stream' : badgeText"));
-            assert.ok(dashboardJsContent.includes("classification.method === 'DirectStream' ? 'Stream' : methodLabel"));
+            assert.ok(htmlContent.includes('var headerBadgeText = badgeText;'));
+            assert.ok(dashboardJsContent.includes('var headerMethodLabel = methodLabel;'));
+            assert.match(htmlContent, /\.playbackMonitorPage \.playback-card-header \.playback-badge\s*\{[^}]*padding-inline:\s*0\.42rem;/s);
+            assert.match(dashboardCssContent, /\.playback-card-header \.playback-badge\s*\{[^}]*padding-inline:\s*0\.48rem;/s);
         });
     });
 
@@ -258,7 +260,7 @@ describe('Playback Info Card v0.2.7.17 Test Suite', () => {
             controller.diagState.lastSuccessTime = Date.now() - 5000;
             const report = controller.buildDiagnosticReport();
 
-            assert.equal(report.pluginVersion, '0.2.7.17');
+            assert.equal(report.pluginVersion, '0.2.7.18');
             assert.ok('jellyfinVersion' in report);
             assert.ok('webVersion' in report);
             assert.ok('route' in report);
@@ -306,7 +308,7 @@ describe('Playback Info Card v0.2.7.17 Test Suite', () => {
 
         it('passes clean redacted diagnostic reports without false positive', () => {
             const cleanReport = JSON.stringify({
-                pluginVersion: '0.2.7.17',
+                pluginVersion: '0.2.7.18',
                 jellyfinVersion: '10.9.11',
                 webVersion: 'Available',
                 route: '/playbackcard',
@@ -976,10 +978,10 @@ describe('Playback Info Card v0.2.7.17 Test Suite', () => {
             return mockModule.exports;
         }
 
-        it('initializes with version 0.2.7.17', () => {
+        it('initializes with version 0.2.7.18', () => {
             const dash = createMockDashboard();
-            assert.equal(dash.version, '0.2.7.17');
-            assert.equal(dash.state.version, '0.2.7.17');
+            assert.equal(dash.version, '0.2.7.18');
+            assert.equal(dash.state.version, '0.2.7.18');
             assert.equal(dash.state.displayMode, 'compact');
         });
 

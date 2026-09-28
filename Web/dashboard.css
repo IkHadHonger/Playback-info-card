@@ -479,9 +479,18 @@
     flex-wrap: wrap;
     align-items: center;
     justify-content: flex-end;
-    gap: 0.35rem;
+    gap: 0.25rem;
     min-width: 0;
     max-width: 100%;
+}
+
+/* Keep the complete playback-method label (for example "Direct Stream") visible in
+   compact multi-stream cards. Slightly tighter header controls leave the trailing
+   action buttons inside the card without changing the labels. */
+.playback-card-header .playback-badge {
+    gap: 0.24rem;
+    padding-inline: 0.48rem;
+    letter-spacing: 0.025em;
 }
 
 /* Status Badges */
