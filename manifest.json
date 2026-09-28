@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/IkHadHonger/Playback-info-card/main/banner.png",
     "versions": [
       {
+        "version": "0.2.7.18",
+        "changelog": "Keeps the full Direct Stream label in compact multi-stream cards and tightens the header badge and action-button spacing so every control stays inside the card. Discord live progress remains server-driven every 60 seconds, multi-stream posters retain equal heights, and Jellyfin 12.1 compatibility plus existing Discord and Telegram functionality are preserved. 197 C# tests and 172 JavaScript UI tests pass, and the release artifact passes ClamAV.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/IkHadHonger/Playback-info-card/releases/download/v0.2.7.18/jellyfin-plugin-playbackcard.zip",
+        "checksum": "42947953af595d36118452eebc3d1083",
+        "timestamp": "2026-09-28T21:19:47Z"
+      },
+      {
         "version": "0.2.7.16",
         "changelog": "Discord live progress is now driven by a server-side scheduler that edits the existing embed with Jellyfin's newest position every 60 seconds, instead of depending on a progress event arriving at the exact interval. Multi-stream PlayInfo cards now stretch their poster rows equally, so all posters have the same visible height. The settings text clearly separates Discord's fixed 60-second cadence from Telegram's configurable interval. Jellyfin 12.1 compatibility, precise Dolby Vision and HDR labels, and existing notification delivery are preserved. 196 C# tests and 172 JavaScript UI tests pass, and the release artifact passes ClamAV.",
         "targetAbi": "12.1.0.0",
