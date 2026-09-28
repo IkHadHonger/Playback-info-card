@@ -43,7 +43,7 @@ function createMockDashboard() {
     return mockModule.exports;
 }
 
-describe('Playback Info Card v0.2.7.14 Test Suite', () => {
+describe('Playback Info Card v0.2.7.15 Test Suite', () => {
     let controller;
 
     beforeEach(() => {
@@ -51,9 +51,9 @@ describe('Playback Info Card v0.2.7.14 Test Suite', () => {
     });
 
     describe('1. Diagnostics Panel States', () => {
-        it('initializes with default waiting state and version 0.2.7.14', () => {
-            assert.equal(controller.version, '0.2.7.14');
-            assert.equal(controller.diagState.pluginVersion, '0.2.7.14');
+        it('initializes with default waiting state and version 0.2.7.15', () => {
+            assert.equal(controller.version, '0.2.7.15');
+            assert.equal(controller.diagState.pluginVersion, '0.2.7.15');
             assert.equal(controller.diagState.sessionsApiStatus, 'Waiting for sessions');
             assert.equal(controller.diagState.pollingState, 'active');
             assert.equal(controller.diagState.lastErrorCategory, 'OK');
@@ -122,7 +122,7 @@ describe('Playback Info Card v0.2.7.14 Test Suite', () => {
     });
 
     describe('4. Artwork Failure and Fallback', () => {
-        it('uses uncropped fanart for one stream and portrait posters for multiple streams', () => {
+        it('uses full-cover fanart for one stream and portrait posters for multiple streams', () => {
             const apiClient = {
                 getImageUrl: (id, opts) => `/images/${id}/${opts.type}/${opts.tag || 'untagged'}`,
                 accessToken: () => ''
@@ -144,6 +144,7 @@ describe('Playback Info Card v0.2.7.14 Test Suite', () => {
             assert.ok(withFanart.includes('/images/movie-1/Primary/poster-tag'), 'Primary poster URL is used');
             assert.ok(withFanart.includes('/images/movie-1/Backdrop/backdrop-tag'), 'Backdrop remains available as the ambient card background');
             assert.ok(withFanart.includes('playback-poster-wrap poster-lg single-stream-backdrop'), 'One stream uses fanart in the artwork slot');
+            assert.match(htmlContent, /\.single-stream-backdrop\s*\{[\s\S]*?background-size:\s*cover;/, 'Single-stream fanart fills the artwork region without distortion');
 
             const withMultipleStreams = fanartController.renderSessionCard(fanartSession, 0, [fanartSession, { Id: 'session-2' }]);
             assert.ok(!withMultipleStreams.includes('single-stream-backdrop'), 'Multiple streams switch the artwork slot back to the poster');
@@ -232,7 +233,7 @@ describe('Playback Info Card v0.2.7.14 Test Suite', () => {
             controller.diagState.lastSuccessTime = Date.now() - 5000;
             const report = controller.buildDiagnosticReport();
 
-            assert.equal(report.pluginVersion, '0.2.7.14');
+            assert.equal(report.pluginVersion, '0.2.7.15');
             assert.ok('jellyfinVersion' in report);
             assert.ok('webVersion' in report);
             assert.ok('route' in report);
@@ -280,7 +281,7 @@ describe('Playback Info Card v0.2.7.14 Test Suite', () => {
 
         it('passes clean redacted diagnostic reports without false positive', () => {
             const cleanReport = JSON.stringify({
-                pluginVersion: '0.2.7.14',
+                pluginVersion: '0.2.7.15',
                 jellyfinVersion: '10.9.11',
                 webVersion: 'Available',
                 route: '/playbackcard',
@@ -950,10 +951,10 @@ describe('Playback Info Card v0.2.7.14 Test Suite', () => {
             return mockModule.exports;
         }
 
-        it('initializes with version 0.2.7.14', () => {
+        it('initializes with version 0.2.7.15', () => {
             const dash = createMockDashboard();
-            assert.equal(dash.version, '0.2.7.14');
-            assert.equal(dash.state.version, '0.2.7.14');
+            assert.equal(dash.version, '0.2.7.15');
+            assert.equal(dash.state.version, '0.2.7.15');
             assert.equal(dash.state.displayMode, 'compact');
         });
 
