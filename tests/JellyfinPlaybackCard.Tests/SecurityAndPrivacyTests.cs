@@ -134,7 +134,7 @@ public class SecurityAndPrivacyTests
         var asm = typeof(Jellyfin.Plugin.PlaybackCard.Plugin).Assembly;
 
         // Strict 0.2.7.9 version check
-        Assert.Equal(new Version(0, 2, 7, 7), asm.GetName().Version);
+        Assert.Equal(new Version(0, 2, 7, 9), asm.GetName().Version);
 
         // Embedded resources
         var resources = asm.GetManifestResourceNames();

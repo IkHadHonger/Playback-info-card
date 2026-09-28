@@ -332,7 +332,11 @@ public class DiscordWebhookSenderTests
         Assert.Contains("2h 0m", description);
 
         var fields = embed.GetProperty("fields");
-        var allValues = fields.ToString();
+        var allValues = string.Empty;
+        foreach (var field in fields.EnumerateArray())
+        {
+            allValues += field.GetProperty("value").GetString();
+        }
         Assert.Contains("HEVC", allValues);
         Assert.Contains("HDR10", allValues);
         Assert.Contains("7.1", allValues);
