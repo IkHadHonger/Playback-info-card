@@ -13,7 +13,7 @@
                     <div class="playbackMonitorTitleGroup">
                         <div class="playbackMonitorTitleRow">
                             <h2 class="sectionTitle playbackMonitorTitle">PlayInfo</h2>
-                            <span class="playbackMonitorVersionBadge">v0.2.7.15</span>
+                            <span class="playbackMonitorVersionBadge">v0.2.7.16</span>
                         </div>
                         <p class="playbackMonitorDescription">Real-time playback telemetry reported by Jellyfin. Local &amp; privacy-first.</p>
                     </div>
@@ -189,10 +189,10 @@
                             <div class="notifProgressGroup">
                                 <label class="notifCheckItem">
                                     <input type="checkbox" id="chkNotifyOnProgress">
-                                    <span>Periodic Progress Updates</span>
+                                    <span>Live Progress Updates</span>
                                 </label>
                                 <div class="notifIntervalGroup">
-                                    <span>every</span>
+                                    <span>Discord every 60 seconds &middot; Telegram every</span>
                                     <input type="number" id="numProgressInterval" min="5" max="120" value="15" class="notifNumberInput">
                                     <span>minutes (min 5)</span>
                                 </div>
@@ -322,7 +322,7 @@
                     <div class="diagnosticsGrid">
                         <div class="diagItem">
                             <span class="diagLabel">Plugin Version</span>
-                            <span id="diagPluginVersion" class="diagValue">0.2.7.15</span>
+                            <span id="diagPluginVersion" class="diagValue">0.2.7.16</span>
                         </div>
                         <div class="diagItem">
                             <span class="diagLabel">Server Version</span>
@@ -2628,7 +2628,7 @@
         window.__playbackInfoCardMonitorController.dispose();
     }
 
-    var PLUGIN_VERSION = '0.2.7.15';
+    var PLUGIN_VERSION = '0.2.7.16';
     var POLL_INTERVAL_MS = 3000;
     var STALE_THRESHOLD_MS = POLL_INTERVAL_MS * 2; // Stale if > 6s without update
 
