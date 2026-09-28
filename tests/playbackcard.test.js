@@ -43,7 +43,7 @@ function createMockDashboard() {
     return mockModule.exports;
 }
 
-describe('Playback Info Card v0.2.7.12 Test Suite', () => {
+describe('Playback Info Card v0.2.7.13 Test Suite', () => {
     let controller;
 
     beforeEach(() => {
@@ -51,9 +51,9 @@ describe('Playback Info Card v0.2.7.12 Test Suite', () => {
     });
 
     describe('1. Diagnostics Panel States', () => {
-        it('initializes with default waiting state and version 0.2.7.12', () => {
-            assert.equal(controller.version, '0.2.7.12');
-            assert.equal(controller.diagState.pluginVersion, '0.2.7.12');
+        it('initializes with default waiting state and version 0.2.7.13', () => {
+            assert.equal(controller.version, '0.2.7.13');
+            assert.equal(controller.diagState.pluginVersion, '0.2.7.13');
             assert.equal(controller.diagState.sessionsApiStatus, 'Waiting for sessions');
             assert.equal(controller.diagState.pollingState, 'active');
             assert.equal(controller.diagState.lastErrorCategory, 'OK');
@@ -122,7 +122,7 @@ describe('Playback Info Card v0.2.7.12 Test Suite', () => {
     });
 
     describe('4. Artwork Failure and Fallback', () => {
-        it('prefers landscape fanart in the PlayInfo card and keeps the poster as fallback', () => {
+        it('keeps the primary poster visible and uses fanart only as the card background', () => {
             const apiClient = {
                 getImageUrl: (id, opts) => `/images/${id}/${opts.type}/${opts.tag || 'untagged'}`,
                 accessToken: () => ''
@@ -139,16 +139,18 @@ describe('Playback Info Card v0.2.7.12 Test Suite', () => {
                 }
             });
 
-            assert.ok(withFanart.includes('data-artwork-role="fanart"'), 'Landscape fanart is the visible card artwork');
-            assert.ok(withFanart.includes('/images/movie-1/Backdrop/backdrop-tag'), 'Backdrop URL is used for the hero image');
-            assert.ok(withFanart.includes('playback-poster-wrap poster-lg is-fanart'), 'Fanart layout class is applied');
+            assert.ok(withFanart.includes('data-artwork-role="poster"'), 'Primary poster is the visible card artwork');
+            assert.ok(withFanart.includes('/images/movie-1/Primary/poster-tag'), 'Primary poster URL is used');
+            assert.ok(withFanart.includes('/images/movie-1/Backdrop/backdrop-tag'), 'Backdrop remains available as the ambient card background');
+            assert.ok(!withFanart.includes('data-artwork-role="fanart"'), 'Fanart is never used as the visible hero image');
+            assert.ok(withFanart.includes('playback-poster-wrap poster-lg'), 'Portrait poster layout is applied');
 
             const posterOnly = fanartController.renderSessionCard({
                 Id: 'session-poster',
                 NowPlayingItem: { Id: 'movie-2', Name: 'Poster Movie', PrimaryImageTag: 'poster-only-tag' }
             });
-            assert.ok(posterOnly.includes('data-artwork-role="poster-fallback"'), 'Poster is retained as artwork fallback');
-            assert.ok(posterOnly.includes('playback-poster-wrap poster-lg is-poster-fallback'), 'Poster fallback gets non-stretching layout class');
+            assert.ok(posterOnly.includes('data-artwork-role="poster"'), 'Poster remains visible without fanart');
+            assert.ok(posterOnly.includes('playback-poster-wrap poster-lg'), 'Poster uses the portrait layout');
         });
 
         it('increments artworkFallbackCount when session has no primary image tag', () => {
@@ -226,7 +228,7 @@ describe('Playback Info Card v0.2.7.12 Test Suite', () => {
             controller.diagState.lastSuccessTime = Date.now() - 5000;
             const report = controller.buildDiagnosticReport();
 
-            assert.equal(report.pluginVersion, '0.2.7.12');
+            assert.equal(report.pluginVersion, '0.2.7.13');
             assert.ok('jellyfinVersion' in report);
             assert.ok('webVersion' in report);
             assert.ok('route' in report);
@@ -274,7 +276,7 @@ describe('Playback Info Card v0.2.7.12 Test Suite', () => {
 
         it('passes clean redacted diagnostic reports without false positive', () => {
             const cleanReport = JSON.stringify({
-                pluginVersion: '0.2.7.12',
+                pluginVersion: '0.2.7.13',
                 jellyfinVersion: '10.9.11',
                 webVersion: 'Available',
                 route: '/playbackcard',
@@ -933,10 +935,10 @@ describe('Playback Info Card v0.2.7.12 Test Suite', () => {
             return mockModule.exports;
         }
 
-        it('initializes with version 0.2.7.12', () => {
+        it('initializes with version 0.2.7.13', () => {
             const dash = createMockDashboard();
-            assert.equal(dash.version, '0.2.7.12');
-            assert.equal(dash.state.version, '0.2.7.12');
+            assert.equal(dash.version, '0.2.7.13');
+            assert.equal(dash.state.version, '0.2.7.13');
             assert.equal(dash.state.displayMode, 'compact');
         });
 

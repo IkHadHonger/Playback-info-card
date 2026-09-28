@@ -367,9 +367,9 @@ public class DiscordWebhookSenderTests
             TranscodeSpeed = "336 fps",
             TranscodeEngine = "qsv",
             TranscodeReasonsWhy = "Audio codec unsupported",
-            Position = TimeSpan.FromMinutes(18),
+            Position = TimeSpan.FromMinutes(4),
             TotalDuration = TimeSpan.FromMinutes(100),
-            PlaybackPercentage = 18
+            PlaybackPercentage = 4
         };
 
         var json = DiscordWebhookSender.BuildDiscordJsonPayload(payload);
@@ -380,9 +380,9 @@ public class DiscordWebhookSenderTests
 
         Assert.DoesNotContain("23.98 fps", allValues);
         Assert.Contains("Transcode speed:** 336 fps", allValues);
-        Assert.Contains("🟧🟧", allValues);
+        Assert.Contains("🟧⬛", allValues);
         Assert.Contains("⬛", allValues);
-        Assert.Contains("18%", allValues);
+        Assert.Contains("4%", allValues);
     }
 
     [Fact]

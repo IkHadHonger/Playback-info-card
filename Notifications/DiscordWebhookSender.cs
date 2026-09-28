@@ -615,7 +615,7 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
     {
         var pct = Math.Clamp(percentage ?? 0, 0, 100);
         const int segments = 10;
-        var filled = (int)Math.Round(pct / 100d * segments, MidpointRounding.AwayFromZero);
+        var filled = pct == 0 ? 0 : (int)Math.Ceiling(pct / 100d * segments);
         var fill = string.Equals(playMethod, "Transcode", StringComparison.OrdinalIgnoreCase) ? "🟧" : "🟩";
         return string.Concat(System.Linq.Enumerable.Repeat(fill, filled)) +
                string.Concat(System.Linq.Enumerable.Repeat("⬛", segments - filled)) +
