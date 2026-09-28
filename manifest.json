@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/IkHadHonger/Playback-info-card/main/banner.png",
     "versions": [
       {
+        "version": "0.2.7.11",
+        "changelog": "Discord playback cards no longer show source FPS, use a thinner text-based progress indicator, add an orange user marker, and include clearer spacing between playback/media, transcoding, and progress sections. Transcoder speed remains separate when Jellyfin reports it. Jellyfin 12.1 compatibility and existing Discord/Telegram delivery are preserved. 193 C# tests and 169 JavaScript UI tests pass, and the release artifact passes ClamAV.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/IkHadHonger/Playback-info-card/releases/download/v0.2.7.11/jellyfin-plugin-playbackcard.zip",
+        "checksum": "843dd1457cfba38c642f20599115629b",
+        "timestamp": "2026-09-28T17:37:20Z"
+      },
+      {
         "version": "0.2.7.10",
         "changelog": "PlayInfo cards now prefer wide Jellyfin fanart/backdrops, with a non-stretched poster fallback, and card actions wrap instead of being clipped. Discord and Telegram gain colored progress bars; Discord places user/client details first; source frame rate and transcoder speed are reported separately. Jellyfin 12.1 compatibility and notification delivery are preserved. 193 C# tests and 169 JavaScript UI tests pass, and the release artifact passes ClamAV.",
         "targetAbi": "12.1.0.0",
