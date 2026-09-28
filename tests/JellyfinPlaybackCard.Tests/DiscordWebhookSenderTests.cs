@@ -36,9 +36,9 @@ public class DiscordWebhookSenderTests
             Bitrate = 42_500_000,
             Container = "mkv",
             IsPaused = false,
-            Position = TimeSpan.Zero,
+            Position = TimeSpan.FromMinutes(12),
             TotalDuration = TimeSpan.FromHours(2),
-            PlaybackPercentage = 0
+            PlaybackPercentage = 10
         };
     }
 
@@ -344,7 +344,7 @@ public class DiscordWebhookSenderTests
         Assert.Contains("42.5 Mbps", allValues);
         Assert.Contains("🟩", allValues);
         Assert.Contains("⬛", allValues);
-        Assert.Contains("0%", allValues);
+        Assert.Contains("10%", allValues);
     }
 
     [Fact]
