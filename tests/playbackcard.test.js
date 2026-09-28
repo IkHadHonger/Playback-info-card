@@ -18,10 +18,11 @@ if (!scriptMatch) {
 }
 const scriptSource = scriptMatch[1];
 
-function createMockController(hash) {
+function createMockController(hash, apiClient) {
     const mockModule = { exports: {} };
     const mockWindow = {
-        location: { hash: hash || '#/playbackcard', pathname: '/playbackcard' }
+        location: { hash: hash || '#/playbackcard', pathname: '/playbackcard' },
+        ApiClient: apiClient || null
     };
     const runner = new Function('module', 'exports', 'window', 'globalThis', scriptSource);
     runner(mockModule, mockModule.exports, mockWindow, mockWindow);
@@ -121,6 +122,35 @@ describe('Playback Info Card v0.2.7.10 Test Suite', () => {
     });
 
     describe('4. Artwork Failure and Fallback', () => {
+        it('prefers landscape fanart in the PlayInfo card and keeps the poster as fallback', () => {
+            const apiClient = {
+                getImageUrl: (id, opts) => `/images/${id}/${opts.type}/${opts.tag || 'untagged'}`,
+                accessToken: () => ''
+            };
+            const fanartController = createMockController(null, apiClient);
+            const withFanart = fanartController.renderSessionCard({
+                Id: 'session-fanart',
+                ItemId: 'movie-1',
+                NowPlayingItem: {
+                    Id: 'movie-1',
+                    Name: 'Fanart Movie',
+                    PrimaryImageTag: 'poster-tag',
+                    BackdropImageTags: ['backdrop-tag']
+                }
+            });
+
+            assert.ok(withFanart.includes('data-artwork-role="fanart"'), 'Landscape fanart is the visible card artwork');
+            assert.ok(withFanart.includes('/images/movie-1/Backdrop/backdrop-tag'), 'Backdrop URL is used for the hero image');
+            assert.ok(withFanart.includes('playback-poster-wrap poster-lg is-fanart'), 'Fanart layout class is applied');
+
+            const posterOnly = fanartController.renderSessionCard({
+                Id: 'session-poster',
+                NowPlayingItem: { Id: 'movie-2', Name: 'Poster Movie', PrimaryImageTag: 'poster-only-tag' }
+            });
+            assert.ok(posterOnly.includes('data-artwork-role="poster-fallback"'), 'Poster is retained as artwork fallback');
+            assert.ok(posterOnly.includes('playback-poster-wrap poster-lg is-poster-fallback'), 'Poster fallback gets non-stretching layout class');
+        });
+
         it('increments artworkFallbackCount when session has no primary image tag', () => {
             const initialFallback = controller.diagState.artworkFallbackCount;
             const sessionNoArt = {
@@ -147,6 +177,11 @@ describe('Playback Info Card v0.2.7.10 Test Suite', () => {
             controller.diagState.artworkLoadedCount = 5;
             const reportLoaded = controller.buildDiagnosticReport();
             assert.equal(reportLoaded.artwork, 'loaded');
+        });
+
+        it('keeps the full action group inside narrow cards by allowing it to wrap', () => {
+            assert.match(htmlContent, /\.playbackMonitorPage \.playback-badge-group\s*\{[^}]*flex-wrap:\s*wrap;/s);
+            assert.match(htmlContent, /\.playbackMonitorPage \.playback-badge-group\s*\{[^}]*max-width:\s*100%;/s);
         });
     });
 
@@ -2575,6 +2610,5 @@ describe('Playback Info Card v0.2.7.10 Test Suite', () => {
         });
     });
 });
-
 
 

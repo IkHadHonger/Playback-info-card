@@ -585,6 +585,7 @@
     border-radius: 16px;
     overflow: hidden;
     display: flex;
+    flex-direction: column;
     align-items: stretch;
     box-shadow:
         0 10px 30px -6px rgba(0, 0, 0, 0.5),
@@ -677,6 +678,7 @@
     gap: 0.5rem 0.75rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     padding-bottom: 0.65rem;
+    min-width: 0;
 }
 
 .playbackMonitorPage .playback-card-user-group {
@@ -742,9 +744,13 @@
 
 .playbackMonitorPage .playback-badge-group {
     display: flex;
+    flex: 1 1 180px;
+    flex-wrap: wrap;
     align-items: center;
+    justify-content: flex-end;
     gap: 0.35rem;
-    flex-shrink: 0;
+    min-width: 0;
+    max-width: 100%;
 }
 
 /* Badges */
@@ -800,53 +806,44 @@
     fill: currentColor;
 }
 
-/* Poster: bleeds flush to the card's own edge and spans its full height, Tautulli-style. */
+/* Artwork hero: prefer Jellyfin's landscape backdrop/fanart. A portrait poster is only
+   used as a fallback and is cropped rather than stretched. Keeping artwork above the
+   content also gives the complete action row enough horizontal room on narrow cards. */
 .playbackMonitorPage .playback-poster-wrap {
     position: relative;
     z-index: 1;
-    flex: 0 0 108px;
-    align-self: stretch;
+    flex: 0 0 auto;
+    width: 100%;
+    height: 150px;
     overflow: hidden;
     background: #0f141d;
-    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: flex-basis 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: height 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Poster width tiers -- large while the details panel is closed, small once it's open
-   (see the posterSizeCls comment in renderSessionCard above). The height/aspect-ratio
-   cap right below is a separate axis and applies on top of whichever width tier is set. */
+/* Keep the existing size classes for render compatibility, but apply them to the
+   landscape hero height instead of stretching a portrait along the card's side. */
 .playbackMonitorPage .playback-poster-wrap.poster-lg {
-    flex-basis: 140px;
+    height: 168px;
 }
 
 .playbackMonitorPage .playback-poster-wrap.poster-sm {
-    flex-basis: 90px;
-}
-
-/* When Show Details is open, the card grows well past a natural poster height -- letting
-   the poster keep stretching to match would force object-fit: cover to crop an extreme,
-   heavily zoomed sliver out of a portrait image. Cap it to a real poster proportion instead
-   and let it sit at the top of the card once expanded; the (now much more vivid) backdrop
-   gradient carries the rest of the card's height gracefully on its own. Desktop/side-by-side
-   layout only -- below 641px the card stacks vertically and already uses a fixed poster
-   height (see the max-width: 640px block), so this must not compete with that rule. */
-@media (min-width: 641px) {
-    .playbackMonitorPage .playback-card:has(.playback-details-panel.open) .playback-poster-wrap {
-        align-self: flex-start;
-        height: auto;
-        aspect-ratio: 2 / 3;
-        max-height: 340px;
-    }
+    height: 126px;
 }
 
 .playbackMonitorPage .playback-poster {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    object-position: center 30%;
     display: block;
+}
+
+.playbackMonitorPage .playback-poster-wrap.is-poster-fallback .playback-poster {
+    object-position: center 22%;
 }
 
 /* Small watermark badge, like a TV channel bug -- a glance at any card identifies it as
@@ -1945,19 +1942,17 @@
         grid-template-columns: 1fr;
     }
 
-    /* Poster flips from flush-left/full-height to flush-top/full-width at phone width. */
-    .playbackMonitorPage .playback-card {
-        flex-direction: column;
-    }
-
     .playbackMonitorPage .playback-poster-wrap,
     .playbackMonitorPage .playback-poster-wrap.poster-lg,
     .playbackMonitorPage .playback-poster-wrap.poster-sm {
         flex: 0 0 auto;
         width: 100%;
-        height: 190px;
-        border-right: none;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        height: 150px;
+    }
+
+    .playbackMonitorPage .playback-badge-group {
+        flex-basis: 100%;
+        justify-content: flex-start;
     }
 
     .playbackMonitorPage .diagnosticsHeader {
@@ -4636,7 +4631,8 @@
                 gridGroupsHtml +
             '</div>';
 
-            // Poster & Backdrop handling
+            // Artwork handling: the PlayInfo page uses Jellyfin's landscape fanart as the
+            // visible hero. The portrait poster remains a fallback when no backdrop exists.
             var apiClient = getApiClient();
             var userAvatarUrl = resolveUserAvatarUrl(session, apiClient);
             var userAvatarHtml = userAvatarUrl
@@ -4645,13 +4641,16 @@
             var art = resolveArtworkUrls(session, item, apiClient);
             var posterUrl = art.posterUrl;
             var backdropUrl = art.backdropUrl;
+            var featuredArtworkUrl = backdropUrl || posterUrl;
+            var featuredArtworkClass = backdropUrl ? 'is-fanart' : 'is-poster-fallback';
 
             var backdropStyle = backdropUrl ? ' style="background-image: url(\'' + escapeHtml(backdropUrl) + '\');"' : '';
             var posterHtml = '';
-            if (posterUrl) {
-                posterHtml = '<img class="playback-poster" src="' + escapeHtml(posterUrl) + '" alt="' + title + '" onload="window.__playbackCardImgLoad && window.__playbackCardImgLoad(true)" onerror="window.__playbackCardImgLoad && window.__playbackCardImgLoad(false, this)" />';
+            if (featuredArtworkUrl) {
+                posterHtml = '<img class="playback-poster" data-artwork-role="' + (backdropUrl ? 'fanart' : 'poster-fallback') + '" src="' + escapeHtml(featuredArtworkUrl) + '" alt="' + title + '" onload="window.__playbackCardImgLoad && window.__playbackCardImgLoad(true)" onerror="window.__playbackCardImgLoad && window.__playbackCardImgLoad(false, this)" />';
             } else {
                 diagState.artworkFallbackCount++;
+                featuredArtworkClass = 'is-empty-artwork';
                 posterHtml = '<div class="playback-poster-fallback" aria-label="No artwork"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="18" rx="3" stroke="currentColor"/><path d="M7 3v18M17 3v18M2 9h20M2 15h20" stroke="currentColor"/></svg></div>';
             }
 
@@ -4662,17 +4661,13 @@
                 '<span>PlayInfo</span>' +
             '</div>';
 
-            // Poster width tier: large while the panel is closed (Compact, nothing
-            // expanded), small once it's open -- Extended and the inline Info panel both
-            // reveal the same full field grid on this page (no separate lighter-weight
-            // Extended-only view here, unlike the Dashboard widget), so there's no real
-            // medium state to distinguish. The existing :has(.playback-details-panel.open)
-            // rule already caps height/aspect-ratio in that case; this is the width axis.
+            // The existing size tier now controls landscape hero height: a larger visual
+            // in Compact mode and a shorter one when technical details are expanded.
             var posterSizeCls = isPanelOpen ? 'poster-sm' : 'poster-lg';
 
             return '<div class="playback-card" data-card-id="' + escapeHtml(cardDomId) + '" data-playback-method="' + escapeHtml(classification.method) + '">' +
                 '<div class="playback-card-backdrop"' + backdropStyle + '></div>' +
-                '<div class="playback-poster-wrap ' + posterSizeCls + '">' + posterHtml + brandBadgeHtml + '</div>' +
+                '<div class="playback-poster-wrap ' + posterSizeCls + ' ' + featuredArtworkClass + '">' + posterHtml + brandBadgeHtml + '</div>' +
                 '<div class="playback-card-inner">' +
                     '<div class="playback-card-main">' +
                         '<div class="playback-card-header">' +
@@ -6256,4 +6251,3 @@
     </div>
 </body>
 </html>
-
