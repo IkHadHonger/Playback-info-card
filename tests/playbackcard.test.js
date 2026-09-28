@@ -212,6 +212,8 @@ describe('Playback Info Card v0.2.7.17 Test Suite', () => {
         it('keeps the full action group inside narrow cards by allowing it to wrap', () => {
             assert.match(htmlContent, /\.playbackMonitorPage \.playback-badge-group\s*\{[^}]*flex-wrap:\s*wrap;/s);
             assert.match(htmlContent, /\.playbackMonitorPage \.playback-badge-group\s*\{[^}]*max-width:\s*100%;/s);
+            assert.ok(htmlContent.includes("classification.method === 'DirectStream' ? 'Stream' : badgeText"));
+            assert.ok(jsContent.includes("classification.method === 'DirectStream' ? 'Stream' : methodLabel"));
         });
     });
 
