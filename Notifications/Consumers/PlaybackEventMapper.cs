@@ -111,6 +111,7 @@ public static class PlaybackEventMapper
 
         var mediaTitle = item?.Name ?? "Unknown Title";
         string? seriesName = null;
+        BaseItem? posterItem = item;
         int? seasonNumber = null;
         int? episodeNumber = null;
         int? productionYear = item?.ProductionYear;
@@ -134,6 +135,17 @@ public static class PlaybackEventMapper
             seriesName = episode.SeriesName;
             seasonNumber = episode.ParentIndexNumber;
             episodeNumber = episode.IndexNumber;
+            try
+            {
+                // Episode Primary images are usually landscape stills. Prefer the parent
+                // series' portrait Primary image so Discord renders the same poster shape as
+                // movies, while retaining the episode image as a safe fallback.
+                posterItem = episode.Series ?? item;
+            }
+            catch
+            {
+                posterItem = item;
+            }
         }
         else if (item != null)
         {
@@ -233,7 +245,7 @@ public static class PlaybackEventMapper
         string? primaryImagePath = null;
         try
         {
-            primaryImagePath = item?.GetImageInfo(ImageType.Primary, 0)?.Path;
+            primaryImagePath = posterItem?.GetImageInfo(ImageType.Primary, 0)?.Path;
         }
         catch
         {
@@ -261,10 +273,7 @@ public static class PlaybackEventMapper
                 {
                     resolution = $"{videoStream.Width.Value}x{videoStream.Height.Value}";
                 }
-                if (!string.IsNullOrEmpty(videoStream.VideoRange.ToString()))
-                {
-                    dynamicRange = videoStream.VideoRange.ToString();
-                }
+                dynamicRange = FormatDynamicRange(videoStream);
                 if (videoStream.RealFrameRate.HasValue && videoStream.RealFrameRate.Value > 0)
                 {
                     frameRate = string.Format(CultureInfo.InvariantCulture, "{0:0.##} fps", videoStream.RealFrameRate.Value);
@@ -359,6 +368,69 @@ public static class PlaybackEventMapper
             8 => "7.1",
             _ => $"{channels}ch"
         };
+    }
+
+    private static string? FormatDynamicRange(MediaStream videoStream)
+    {
+        var dvProfile = Convert.ToString(videoStream.DvProfile, CultureInfo.InvariantCulture);
+        var dvLevel = Convert.ToString(videoStream.DvLevel, CultureInfo.InvariantCulture);
+        var descriptor = string.Join(
+            ' ',
+            new[]
+            {
+                videoStream.VideoRangeType.ToString(),
+                videoStream.VideoRange.ToString(),
+                videoStream.VideoDoViTitle,
+                videoStream.DisplayTitle,
+                videoStream.Title,
+                videoStream.Profile,
+                string.IsNullOrWhiteSpace(dvProfile) ? null : "DOVI",
+                videoStream.RpuPresentFlag == true ? "DOVI RPU" : null
+            }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+        if (descriptor.Contains("DOVI", StringComparison.OrdinalIgnoreCase)
+            || descriptor.Contains("Dolby Vision", StringComparison.OrdinalIgnoreCase)
+            || descriptor.Contains("DVHE", StringComparison.OrdinalIgnoreCase)
+            || descriptor.Contains("DVAV", StringComparison.OrdinalIgnoreCase)
+            || descriptor.Contains("DVA1", StringComparison.OrdinalIgnoreCase))
+        {
+            var profile = dvProfile;
+            var level = dvLevel;
+            var profileMatch = System.Text.RegularExpressions.Regex.Match(descriptor, "(?:Profile|\\bP)\\s*(\\d+)(?:\\.(\\d+))?", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (string.IsNullOrWhiteSpace(profile) && profileMatch.Success)
+            {
+                profile = profileMatch.Groups[1].Value;
+            }
+            if (string.IsNullOrWhiteSpace(level) && profileMatch.Success && profileMatch.Groups[2].Success) level = profileMatch.Groups[2].Value;
+
+            var layer = descriptor.Contains("FEL", StringComparison.OrdinalIgnoreCase)
+                ? "FEL"
+                : descriptor.Contains("MEL", StringComparison.OrdinalIgnoreCase)
+                    ? "MEL"
+                    : videoStream.ElPresentFlag == true || descriptor.Contains("WithEL", StringComparison.OrdinalIgnoreCase) ? "EL" : null;
+            var baseRange = descriptor.Contains("HDR10+", StringComparison.OrdinalIgnoreCase)
+                || descriptor.Contains("HDR10PLUS", StringComparison.OrdinalIgnoreCase)
+                || descriptor.Contains("HDR10 PLUS", StringComparison.OrdinalIgnoreCase)
+                    ? "HDR10+"
+                    : descriptor.Contains("HDR10", StringComparison.OrdinalIgnoreCase) ? "HDR10" : null;
+            var details = string.Join(" · ", new[] { layer, baseRange }.Where(value => !string.IsNullOrWhiteSpace(value)));
+            return "Dolby Vision"
+                + (!string.IsNullOrWhiteSpace(profile) ? $" Profile {profile}{(!string.IsNullOrWhiteSpace(level) ? $".{level}" : string.Empty)}" : string.Empty)
+                + (!string.IsNullOrWhiteSpace(details) ? $" ({details})" : string.Empty);
+        }
+
+        if (descriptor.Contains("HDR10+", StringComparison.OrdinalIgnoreCase)
+            || descriptor.Contains("HDR10PLUS", StringComparison.OrdinalIgnoreCase)
+            || descriptor.Contains("HDR10 PLUS", StringComparison.OrdinalIgnoreCase))
+        {
+            return "HDR10+";
+        }
+
+        if (descriptor.Contains("HDR10", StringComparison.OrdinalIgnoreCase)) return "HDR10";
+        if (descriptor.Contains("HLG", StringComparison.OrdinalIgnoreCase)) return "HLG";
+        if (descriptor.Contains("HDR", StringComparison.OrdinalIgnoreCase)) return "HDR";
+        if (descriptor.Contains("SDR", StringComparison.OrdinalIgnoreCase)) return "SDR";
+        return null;
     }
 
     public static string MapTranscodeReasons(IReadOnlyList<string> reasons)
