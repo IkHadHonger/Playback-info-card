@@ -116,6 +116,37 @@ public class DeliveryQueueTests
     }
 
     [Fact]
+    public async Task DiscordLiveScheduler_QueuesNewestProgressEveryMinute()
+    {
+        using var service = new NotificationDeliveryService(
+            new TestLogger<NotificationDeliveryService>(),
+            new NoOpDiscordWebhookSender(),
+            new NoOpTelegramBotApiSender(),
+            new NoOpNotificationSecretStore());
+
+        var startedAt = new DateTimeOffset(2026, 9, 28, 20, 0, 0, TimeSpan.Zero);
+        var first = CreateRecord(NotificationEventType.Progress, "live-sess", positionTicks: TimeSpan.FromMinutes(10).Ticks);
+        var newest = CreateRecord(NotificationEventType.Progress, "live-sess", positionTicks: TimeSpan.FromMinutes(11).Ticks);
+
+        service.ScheduleDiscordLiveUpdateForTesting(first, startedAt);
+        service.ScheduleDiscordLiveUpdateForTesting(newest, startedAt.AddSeconds(30));
+
+        Assert.Equal(0, service.FlushDiscordLiveUpdates(startedAt.AddSeconds(59)));
+        Assert.Equal(0, service.GetDiagnostics().DiscordQueueDepth);
+
+        Assert.Equal(1, service.FlushDiscordLiveUpdates(startedAt.AddMinutes(1)));
+        Assert.Equal(1, service.GetDiagnostics().DiscordQueueDepth);
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        var queued = await service.DequeueDiscordLiveUpdateForTesting(cts.Token);
+        Assert.NotNull(queued);
+        Assert.Equal(TimeSpan.FromMinutes(11), queued.Position);
+
+        Assert.Equal(0, service.FlushDiscordLiveUpdates(startedAt.AddMinutes(1).AddSeconds(59)));
+        Assert.Equal(1, service.FlushDiscordLiveUpdates(startedAt.AddMinutes(2)));
+    }
+
+    [Fact]
     public void DestinationQueue_ProgressDropping_UnderQueuePressure()
     {
         // Capacity 10, reservedCritical 2 -> Non-critical limit is 8
