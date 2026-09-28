@@ -33,6 +33,10 @@ function createMockController(hash, apiClient) {
 // window/document interaction mocked beyond the minimum the module needs to load.
 const dashboardJsPath = path.resolve(__dirname, '../Web/dashboard.js');
 const dashboardJsContent = fs.readFileSync(dashboardJsPath, 'utf8');
+const dashboardCssPath = path.resolve(__dirname, '../Web/dashboard.css');
+const dashboardCssContent = fs.readFileSync(dashboardCssPath, 'utf8');
+const playbackCardHtmlPath = path.resolve(__dirname, '../Web/playbackcard.html');
+const playbackCardHtmlContent = fs.readFileSync(playbackCardHtmlPath, 'utf8');
 
 function createMockDashboard() {
     const mockModule = { exports: {} };
@@ -43,7 +47,7 @@ function createMockDashboard() {
     return mockModule.exports;
 }
 
-describe('Playback Info Card v0.2.7.15 Test Suite', () => {
+describe('Playback Info Card v0.2.7.16 Test Suite', () => {
     let controller;
 
     beforeEach(() => {
@@ -51,9 +55,9 @@ describe('Playback Info Card v0.2.7.15 Test Suite', () => {
     });
 
     describe('1. Diagnostics Panel States', () => {
-        it('initializes with default waiting state and version 0.2.7.15', () => {
-            assert.equal(controller.version, '0.2.7.15');
-            assert.equal(controller.diagState.pluginVersion, '0.2.7.15');
+        it('initializes with default waiting state and version 0.2.7.16', () => {
+            assert.equal(controller.version, '0.2.7.16');
+            assert.equal(controller.diagState.pluginVersion, '0.2.7.16');
             assert.equal(controller.diagState.sessionsApiStatus, 'Waiting for sessions');
             assert.equal(controller.diagState.pollingState, 'active');
             assert.equal(controller.diagState.lastErrorCategory, 'OK');
@@ -158,6 +162,19 @@ describe('Playback Info Card v0.2.7.15 Test Suite', () => {
             assert.ok(posterOnly.includes('playback-poster-wrap poster-lg'), 'Poster uses the portrait layout');
         });
 
+        it('stretches every multi-stream poster row to the equal-height grid card', () => {
+            assert.match(
+                dashboardCssContent,
+                /\.playback-card-top\s*\{[\s\S]*?flex:\s*1\s+1\s+auto;/,
+                'Shorter cards must grow their poster row to match the tallest card in the grid'
+            );
+        });
+
+        it('explains the fixed Discord live-update cadence separately from Telegram', () => {
+            assert.ok(playbackCardHtmlContent.includes('Discord every 60 seconds'));
+            assert.ok(playbackCardHtmlContent.includes('Telegram every'));
+        });
+
         it('increments artworkFallbackCount when session has no primary image tag', () => {
             const initialFallback = controller.diagState.artworkFallbackCount;
             const sessionNoArt = {
@@ -233,7 +250,7 @@ describe('Playback Info Card v0.2.7.15 Test Suite', () => {
             controller.diagState.lastSuccessTime = Date.now() - 5000;
             const report = controller.buildDiagnosticReport();
 
-            assert.equal(report.pluginVersion, '0.2.7.15');
+            assert.equal(report.pluginVersion, '0.2.7.16');
             assert.ok('jellyfinVersion' in report);
             assert.ok('webVersion' in report);
             assert.ok('route' in report);
@@ -281,7 +298,7 @@ describe('Playback Info Card v0.2.7.15 Test Suite', () => {
 
         it('passes clean redacted diagnostic reports without false positive', () => {
             const cleanReport = JSON.stringify({
-                pluginVersion: '0.2.7.15',
+                pluginVersion: '0.2.7.16',
                 jellyfinVersion: '10.9.11',
                 webVersion: 'Available',
                 route: '/playbackcard',
@@ -951,10 +968,10 @@ describe('Playback Info Card v0.2.7.15 Test Suite', () => {
             return mockModule.exports;
         }
 
-        it('initializes with version 0.2.7.15', () => {
+        it('initializes with version 0.2.7.16', () => {
             const dash = createMockDashboard();
-            assert.equal(dash.version, '0.2.7.15');
-            assert.equal(dash.state.version, '0.2.7.15');
+            assert.equal(dash.version, '0.2.7.16');
+            assert.equal(dash.state.version, '0.2.7.16');
             assert.equal(dash.state.displayMode, 'compact');
         });
 
