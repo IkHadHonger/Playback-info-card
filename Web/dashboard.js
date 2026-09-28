@@ -151,7 +151,7 @@
             videoStream.Title,
             videoStream.Profile,
             videoStream.DvProfile != null ? 'DOVI' : '',
-            videoStream.RpuPresentFlag === true ? 'DOVI RPU' : ''
+            Number(videoStream.RpuPresentFlag) === 1 ? 'DOVI RPU' : ''
         ].filter(Boolean).join(' ').toUpperCase();
         if (range.indexOf('DOVI') !== -1 || range.indexOf('DOLBY VISION') !== -1 || range.indexOf('DVHE') !== -1 || range.indexOf('DVAV') !== -1 || range.indexOf('DVA1') !== -1) {
             var profile = Number(videoStream.DvProfile) || 0;
@@ -162,7 +162,7 @@
             var details = [];
             if (/\bFEL\b/.test(range)) details.push('FEL');
             else if (/\bMEL\b/.test(range)) details.push('MEL');
-            else if (videoStream.ElPresentFlag === true || range.indexOf('WITHEL') !== -1) details.push('EL');
+            else if (Number(videoStream.ElPresentFlag) === 1 || range.indexOf('WITHEL') !== -1) details.push('EL');
             if (range.indexOf('HDR10+') !== -1 || range.indexOf('HDR10PLUS') !== -1 || range.indexOf('HDR10 PLUS') !== -1) details.push('HDR10+');
             else if (range.indexOf('HDR10') !== -1) details.push('HDR10');
             return 'DV' + (profile ? ' P' + profile + (level ? '.' + level : '') : '') + (details.length ? ' (' + details.join(' · ') + ')' : '');
