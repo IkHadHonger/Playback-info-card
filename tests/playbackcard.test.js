@@ -122,13 +122,13 @@ describe('Playback Info Card v0.2.7.13 Test Suite', () => {
     });
 
     describe('4. Artwork Failure and Fallback', () => {
-        it('keeps the primary poster visible and uses fanart only as the card background', () => {
+        it('uses uncropped fanart for one stream and portrait posters for multiple streams', () => {
             const apiClient = {
                 getImageUrl: (id, opts) => `/images/${id}/${opts.type}/${opts.tag || 'untagged'}`,
                 accessToken: () => ''
             };
             const fanartController = createMockController(null, apiClient);
-            const withFanart = fanartController.renderSessionCard({
+            const fanartSession = {
                 Id: 'session-fanart',
                 ItemId: 'movie-1',
                 NowPlayingItem: {
@@ -137,13 +137,17 @@ describe('Playback Info Card v0.2.7.13 Test Suite', () => {
                     PrimaryImageTag: 'poster-tag',
                     BackdropImageTags: ['backdrop-tag']
                 }
-            });
+            };
+            const withFanart = fanartController.renderSessionCard(fanartSession, 0, [fanartSession]);
 
-            assert.ok(withFanart.includes('data-artwork-role="poster"'), 'Primary poster is the visible card artwork');
+            assert.ok(withFanart.includes('data-artwork-role="poster"'), 'Primary poster remains available as a fallback');
             assert.ok(withFanart.includes('/images/movie-1/Primary/poster-tag'), 'Primary poster URL is used');
             assert.ok(withFanart.includes('/images/movie-1/Backdrop/backdrop-tag'), 'Backdrop remains available as the ambient card background');
-            assert.ok(!withFanart.includes('data-artwork-role="fanart"'), 'Fanart is never used as the visible hero image');
-            assert.ok(withFanart.includes('playback-poster-wrap poster-lg'), 'Portrait poster layout is applied');
+            assert.ok(withFanart.includes('playback-poster-wrap poster-lg single-stream-backdrop'), 'One stream uses fanart in the artwork slot');
+
+            const withMultipleStreams = fanartController.renderSessionCard(fanartSession, 0, [fanartSession, { Id: 'session-2' }]);
+            assert.ok(!withMultipleStreams.includes('single-stream-backdrop'), 'Multiple streams switch the artwork slot back to the poster');
+            assert.ok(withMultipleStreams.includes('data-artwork-role="poster"'), 'Multi-stream cards retain portrait poster markup');
 
             const posterOnly = fanartController.renderSessionCard({
                 Id: 'session-poster',
@@ -459,6 +463,17 @@ describe('Playback Info Card v0.2.7.13 Test Suite', () => {
                 ]
             }
         };
+
+        it('prioritizes Dolby Vision and HDR10+ over a generic HDR fallback', () => {
+            assert.equal(controller.extractDynamicRangePill({ VideoRange: 'HDR', VideoRangeType: 'DOVI' }), 'DV');
+            assert.equal(controller.extractDynamicRangePill({ VideoRange: 'HDR', VideoRangeType: 'HDR10Plus' }), 'HDR10+');
+            assert.equal(controller.extractDynamicRangePill({ VideoRange: 'HDR', DvProfile: 8 }), 'DV P8');
+            assert.equal(controller.extractDynamicRangePill({ VideoRange: 'HDR', RpuPresentFlag: true }), 'DV');
+            assert.equal(controller.extractDynamicRangePill({ VideoRange: 'HDR', VideoDoViTitle: 'DV Profile 7.6 (FEL)', DvProfile: 7 }), 'DV P7.6 (FEL)');
+            assert.equal(controller.extractDynamicRangePill({ VideoRange: 'HDR', VideoDoViTitle: 'DV Profile 7.6 (MEL)', DvProfile: 7 }), 'DV P7.6 (MEL)');
+            assert.equal(controller.extractDynamicRangePill({ VideoRange: 'HDR', VideoRangeType: 'DOVIWithELHDR10Plus', VideoDoViTitle: 'Dolby Vision Profile 7.6 (HDR10)', DvProfile: 7, DvLevel: 6, RpuPresentFlag: true, ElPresentFlag: true }), 'DV P7.6 (EL · HDR10+)');
+            assert.equal(controller.extractDynamicRangePill({ VideoRange: 'HDR10' }), 'HDR10');
+        });
 
         it('shows every pill -- including secondary audio codec and subtitle language -- in compact mode', () => {
             controller.setDisplayMode('compact');
