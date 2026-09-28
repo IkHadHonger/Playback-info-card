@@ -230,11 +230,9 @@
         var finish = new Date((typeof nowMs === 'number' ? nowMs : Date.now()) + Math.round(remainingTicks / 10000));
         var hours = finish.getHours();
         var minutes = finish.getMinutes();
-        var ampm = hours >= 12 ? 'PM' : 'AM';
-        var hours12 = hours % 12;
-        if (hours12 === 0) hours12 = 12;
+        var paddedHours = hours < 10 ? '0' + hours : String(hours);
         var paddedMinutes = minutes < 10 ? '0' + minutes : String(minutes);
-        return hours12 + ':' + paddedMinutes + ' ' + ampm;
+        return paddedHours + ':' + paddedMinutes;
     }
 
     // Maps the 2/3-letter language codes media files are typically tagged with (ISO 639-1/639-2,

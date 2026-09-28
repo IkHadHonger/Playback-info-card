@@ -2324,7 +2324,8 @@ describe('Playback Info Card v0.2.7.12 Test Suite', () => {
         it('formats a real ETA from remaining ticks, and never fabricates one with zero remaining time', () => {
             const now = new Date(2026, 0, 1, 20, 0, 0).getTime(); // 8:00 PM
             const oneHourTicks = 3600 * 10000000;
-            assert.equal(dash.formatEta(oneHourTicks, now), '9:00 PM');
+            assert.equal(dash.formatEta(oneHourTicks, now), '21:00');
+            assert.equal(dash.formatEta(5 * 60 * 10000000, new Date(2026, 0, 1, 0, 0, 0).getTime()), '00:05');
             assert.equal(dash.formatEta(0, now), null);
             assert.equal(dash.formatEta(-5, now), null);
         });
