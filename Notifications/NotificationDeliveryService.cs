@@ -31,6 +31,10 @@ public sealed class NotificationDeliveryService : BackgroundService, INotificati
     private readonly ConcurrentDictionary<string, DateTimeOffset> _progressDedupe = new();
     private readonly ConcurrentDictionary<string, DateTimeOffset> _discordProgressDedupe = new();
     private readonly ConcurrentDictionary<string, DateTimeOffset> _telegramProgressDedupe = new();
+    private readonly ConcurrentDictionary<string, PlaybackEventRecord> _latestDiscordProgress = new();
+
+    private static readonly TimeSpan DiscordLiveUpdateInterval = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan DiscordLiveUpdateSweepInterval = TimeSpan.FromSeconds(5);
 
     // Diagnostics state
     private DateTimeOffset? _lastAttemptTimestamp;
@@ -148,13 +152,23 @@ public sealed class NotificationDeliveryService : BackgroundService, INotificati
     {
         var now = DateTimeOffset.UtcNow;
         var sessionKey = record.InternalSessionKey;
-        var delivered = false;
+        var accepted = false;
 
-        if (config.DiscordEnabled && !string.IsNullOrWhiteSpace(_secretStore.GetDiscordWebhookUrl()) &&
-            !IsDuplicateAndRecord(_discordProgressDedupe, sessionKey, TimeSpan.FromMinutes(1), now))
+        if (config.DiscordEnabled && !string.IsNullOrWhiteSpace(_secretStore.GetDiscordWebhookUrl()))
         {
-            _discordQueue.Enqueue(record);
-            delivered = true;
+            // Keep replacing the pending sample with Jellyfin's newest truthful position. A
+            // dedicated server-side clock flushes that sample once per minute, so Discord live
+            // edits no longer depend on a progress event arriving at exactly the right moment.
+            if (record.IsPaused)
+            {
+                _latestDiscordProgress.TryRemove(sessionKey, out _);
+            }
+            else
+            {
+                ScheduleDiscordLiveUpdate(record, now);
+            }
+
+            accepted = true;
         }
 
         var telegramInterval = TimeSpan.FromMinutes(Math.Max(5, config.ProgressIntervalMinutes));
@@ -163,14 +177,57 @@ public sealed class NotificationDeliveryService : BackgroundService, INotificati
             !IsDuplicateAndRecord(_telegramProgressDedupe, sessionKey, telegramInterval, now))
         {
             _telegramQueue.Enqueue(record);
-            delivered = true;
+            accepted = true;
         }
 
-        if (!delivered)
+        if (!accepted)
         {
             Interlocked.Increment(ref _dedupeCount);
         }
     }
+
+    private void ScheduleDiscordLiveUpdate(PlaybackEventRecord record, DateTimeOffset now)
+    {
+        _latestDiscordProgress[record.InternalSessionKey] = record;
+        _discordProgressDedupe.TryAdd(record.InternalSessionKey, now);
+    }
+
+    /// <summary>
+    /// Queues the newest known progress sample for every due Discord live message.
+    /// Internal for deterministic unit tests; the production scheduler calls it every five seconds.
+    /// </summary>
+    internal int FlushDiscordLiveUpdates(DateTimeOffset now)
+    {
+        var queued = 0;
+        foreach (var entry in _latestDiscordProgress)
+        {
+            if (entry.Value.IsPaused ||
+                IsDuplicateAndRecord(_discordProgressDedupe, entry.Key, DiscordLiveUpdateInterval, now))
+            {
+                continue;
+            }
+
+            // Re-read after the time check so a concurrent Jellyfin progress event cannot make us
+            // send an older sample when a newer one is already available.
+            if (_latestDiscordProgress.TryGetValue(entry.Key, out var latest))
+            {
+                _discordQueue.Enqueue(latest);
+                queued++;
+            }
+        }
+
+        return queued;
+    }
+
+    /// <summary>
+    /// Test seam for scheduling a truthful Jellyfin progress sample without constructing the
+    /// process-wide plugin singleton.
+    /// </summary>
+    internal void ScheduleDiscordLiveUpdateForTesting(PlaybackEventRecord record, DateTimeOffset now) =>
+        ScheduleDiscordLiveUpdate(record, now);
+
+    internal Task<PlaybackEventRecord?> DequeueDiscordLiveUpdateForTesting(CancellationToken cancellationToken) =>
+        _discordQueue.DequeueAsync(cancellationToken);
 
     private static bool IsUserAllowed(PlaybackEventRecord record, PluginConfiguration config)
     {
@@ -234,13 +291,23 @@ public sealed class NotificationDeliveryService : BackgroundService, INotificati
             _progressDedupe.TryRemove(sessionKey, out _);
             _discordProgressDedupe.TryRemove(sessionKey, out _);
             _telegramProgressDedupe.TryRemove(sessionKey, out _);
+            _latestDiscordProgress.TryRemove(sessionKey, out _);
 
             // Start deduplicated within 10s
-            return IsDuplicateAndRecord(_startDedupe, sessionKey, TimeSpan.FromSeconds(10), now);
+            var duplicate = IsDuplicateAndRecord(_startDedupe, sessionKey, TimeSpan.FromSeconds(10), now);
+            if (!duplicate)
+            {
+                // The first live edit is due one minute after the start message, not immediately
+                // after Jellyfin's first progress tick.
+                _discordProgressDedupe[sessionKey] = now;
+            }
+
+            return duplicate;
         }
 
         if (record.EventType == NotificationEventType.Stop || record.EventType == NotificationEventType.Completion)
         {
+            _latestDiscordProgress.TryRemove(sessionKey, out _);
             _discordProgressDedupe.TryRemove(sessionKey, out _);
             _telegramProgressDedupe.TryRemove(sessionKey, out _);
             // Primary dedupe: 1 stop per sessionKey (indefinitely, until Start clears it or TTL prunes it)
@@ -256,6 +323,8 @@ public sealed class NotificationDeliveryService : BackgroundService, INotificati
 
         if (record.EventType == NotificationEventType.Pause || record.EventType == NotificationEventType.Resume)
         {
+            _latestDiscordProgress.TryRemove(sessionKey, out _);
+            _discordProgressDedupe[sessionKey] = now;
             // 5s debounce for pause/resume
             var prKey = $"{sessionKey}:{record.EventType}";
             return IsDuplicateAndRecord(_pauseResumeDedupe, prKey, TimeSpan.FromSeconds(5), now);
@@ -337,8 +406,37 @@ public sealed class NotificationDeliveryService : BackgroundService, INotificati
             "TelegramWorker",
             stoppingToken);
 
-        await Task.WhenAll(discordTask, telegramTask).ConfigureAwait(false);
+        var discordLiveUpdateTask = ProcessDiscordLiveUpdatesAsync(stoppingToken);
+
+        await Task.WhenAll(discordTask, telegramTask, discordLiveUpdateTask).ConfigureAwait(false);
         _workerState = "Stopped";
+    }
+
+    private async Task ProcessDiscordLiveUpdatesAsync(CancellationToken stoppingToken)
+    {
+        using var timer = new PeriodicTimer(DiscordLiveUpdateSweepInterval);
+        try
+        {
+            while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false))
+            {
+                var config = Plugin.Instance?.Configuration;
+                if (config == null || !config.NotificationsEnabled || !config.NotifyOnProgress ||
+                    !config.DiscordEnabled || string.IsNullOrWhiteSpace(_secretStore.GetDiscordWebhookUrl()))
+                {
+                    continue;
+                }
+
+                var queued = FlushDiscordLiveUpdates(DateTimeOffset.UtcNow);
+                if (queued > 0)
+                {
+                    _logger.LogDebug("[Notifications] Queued {Count} scheduled Discord live progress update(s).", queued);
+                }
+            }
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            // Normal hosted-service shutdown.
+        }
     }
 
     private async Task<DeliveryResult> SendDiscordAsync(
