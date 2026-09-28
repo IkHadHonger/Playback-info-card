@@ -168,6 +168,12 @@ describe('Playback Info Card v0.2.7.17 Test Suite', () => {
                 /\.playback-card-top\s*\{[\s\S]*?flex:\s*1\s+1\s+auto;/,
                 'Shorter cards must grow their poster row to match the tallest card in the grid'
             );
+            assert.match(dashboardCssContent, /\.playback-card\s*\{[\s\S]*?height:\s*100%;/);
+            assert.match(
+                dashboardCssContent,
+                /\.playback-card:not\(:has\(> \.playback-details-panel\)\) > \.playback-card-top\s*\{[\s\S]*?min-height:\s*100%;/
+            );
+            assert.match(dashboardCssContent, /\.playback-poster-wrap\s*\{[\s\S]*?height:\s*100%;/);
         });
 
         it('explains the fixed Discord live-update cadence separately from Telegram', () => {
