@@ -1058,7 +1058,7 @@
 
             var text = (h.textContent || '').trim().toLowerCase();
             var i18n = typeof h.getAttribute === 'function' ? h.getAttribute('data-i18n-key') : null;
-            if (text === 'devices' || text === 'active devices' || i18n === 'HeaderDevices') {
+            if (isDevicesHeadingText(text) || i18n === 'HeaderDevices') {
                 var hContainer = findWidgetContainerFromTarget(h, scope);
                 if (hContainer && hContainer.id !== CONTAINER_ID && !isExcludedNavigation(hContainer)) {
                     return hContainer;
@@ -1126,6 +1126,23 @@
         return null;
     }
 
+    function isDevicesHeadingText(text) {
+        var normalized = String(text || '').trim().toLowerCase();
+        return normalized === 'devices' ||
+            normalized === 'active devices' ||
+            normalized === 'apparaten' ||
+            normalized === 'actieve apparaten';
+    }
+
+    function stockDevicesNeedsHiding(stockDevices) {
+        if (!stockDevices) return false;
+        var markedHidden = typeof stockDevices.getAttribute === 'function'
+            ? stockDevices.getAttribute('data-playback-card-stock-hidden') === 'true'
+            : false;
+        var visuallyHidden = stockDevices.style && stockDevices.style.display === 'none';
+        return !markedHidden || !visuallyHidden;
+    }
+
     function cleanupLingeringStockDevices(container) {
         if (typeof document === 'undefined') return;
         try {
@@ -1137,7 +1154,7 @@
                 if (isExcludedNavigation(h)) continue;
                 if (container && (h === container || (typeof container.contains === 'function' && container.contains(h)))) continue;
                 var text = (h.textContent || '').trim().toLowerCase();
-                if (text === 'devices' || text === 'active devices') {
+                if (isDevicesHeadingText(text)) {
                     var p = h.parentElement;
                     if (p && p !== document.body && p !== root && (!p.id || p.id.indexOf('Page') === -1)) {
                         p.style.display = 'none';
@@ -2958,7 +2975,11 @@
                 if (isDashboardPage()) {
                     var container = typeof document.getElementById === 'function' ? document.getElementById(CONTAINER_ID) : null;
                     var stockDevices = findStockDevicesSection();
-                    if (!container || stockDevices) {
+                    // Ignore mutations made inside our own card and a stock Devices/Apparaten
+                    // widget that is already hidden. React keeps that widget in the DOM by
+                    // design; treating its mere presence as work caused a 50 ms re-render
+                    // loop, which made the card flicker and swallowed control-button clicks.
+                    if (!container || stockDevicesNeedsHiding(stockDevices)) {
                         if (observerTimeout) clearTimeout(observerTimeout);
                         observerTimeout = setTimeout(function () {
                             if (isDashboardPage()) {
@@ -2998,6 +3019,8 @@
         isExcludedNavigation: isExcludedNavigation,
         getDashboardContentRoot: getDashboardContentRoot,
         findStockDevicesSection: findStockDevicesSection,
+        isDevicesHeadingText: isDevicesHeadingText,
+        stockDevicesNeedsHiding: stockDevicesNeedsHiding,
         cleanupLingeringStockDevices: cleanupLingeringStockDevices,
         ensureContainerInserted: ensureContainerInserted,
         renderSessionCard: renderSessionCard,

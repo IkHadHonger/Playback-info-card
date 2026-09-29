@@ -1329,6 +1329,60 @@ describe('Playback Info Card v0.2.7.25 Test Suite', () => {
             assert.ok(newlyRerenderedDevices.parentNode, 'Re-rendered stock devices retain their parent');
         });
 
+        it('recognizes and hides the Dutch Apparaten widget', () => {
+            const parent = {
+                children: [],
+                insertBefore: (newNode) => { newNode.parentNode = parent; }
+            };
+            const devicesWidget = {
+                className: 'MuiBox-root',
+                parentElement: parent,
+                parentNode: parent,
+                style: { display: 'block' },
+                attributes: {},
+                setAttribute(name, value) { this.attributes[name] = value; },
+                getAttribute(name) { return this.attributes[name] || null; },
+                insertBefore(newNode) { newNode.parentNode = this; },
+                querySelectorAll: () => []
+            };
+            const heading = {
+                textContent: 'Apparaten',
+                parentElement: devicesWidget,
+                parentNode: devicesWidget,
+                closest: () => null,
+                getAttribute: () => null
+            };
+            const mockDoc = {
+                getElementById: () => null,
+                querySelector: () => null,
+                querySelectorAll: (selector) => selector.includes('h1') ? [heading] : [],
+                createElement: () => ({ id: '', setAttribute: () => {}, getAttribute: () => null, addEventListener: () => {} }),
+                addEventListener: () => {}
+            };
+
+            const dash = createMockDashboard({ document: mockDoc });
+            const container = dash.ensureContainerInserted();
+
+            assert.ok(container, 'PlayInfo mounts beside the Dutch Apparaten widget');
+            assert.equal(devicesWidget.style.display, 'none');
+            assert.equal(devicesWidget.attributes['data-playback-card-stock-hidden'], 'true');
+        });
+
+        it('does not schedule another render merely because the hidden stock widget still exists', () => {
+            const dash = createMockDashboard();
+            const hiddenStock = {
+                style: { display: 'none' },
+                getAttribute: (name) => name === 'data-playback-card-stock-hidden' ? 'true' : null
+            };
+            const visibleStock = {
+                style: { display: 'block' },
+                getAttribute: () => null
+            };
+
+            assert.equal(dash.stockDevicesNeedsHiding(hiddenStock), false, 'Already-hidden React node must not trigger a render loop');
+            assert.equal(dash.stockDevicesNeedsHiding(visibleStock), true, 'A newly rendered visible stock widget must be hidden once');
+        });
+
         it('renders empty state "No active playback" and preserves connected device visibility when no streams are playing', () => {
             const dash = createMockDashboard();
             const container = { innerHTML: '' };
