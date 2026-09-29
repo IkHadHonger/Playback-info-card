@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/IkHadHonger/Playback-info-card/main/banner.png",
     "versions": [
       {
+        "version": "0.2.7.21",
+        "changelog": "Fixes recurring Jellyfin dashboard NotFoundError crashes by never removing or replacing React-owned Devices widget nodes. PlayInfo now mounts beside the stock widget and hides it visually, allowing Jellyfin to update and unmount its own DOM safely during navigation and dashboard refreshes. Retains the Discord live countdown and ETA, Jellyfin 12.1 compatibility, and existing Discord/Telegram functionality. 200 C# tests and 172 JavaScript UI tests pass, and the release artifact passes ClamAV.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/IkHadHonger/Playback-info-card/releases/download/v0.2.7.21/jellyfin-plugin-playbackcard.zip",
+        "checksum": "9b305357bed5b4b738073be53df0b2d9",
+        "timestamp": "2026-09-29T14:47:19Z"
+      },
+      {
         "version": "0.2.7.20",
         "changelog": "Discord live playback cards now show elapsed time, a decreasing remaining-time countdown, and a local-time ETA beside it. The remaining time is recalculated on every 60-second live edit; paused playback shows ETA paused instead of a misleading finish time. Retains Jellyfin 12.1 compatibility and existing Discord/Telegram functionality. 200 C# tests and 172 JavaScript UI tests pass, and the release artifact passes ClamAV.",
         "targetAbi": "12.1.0.0",
