@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/IkHadHonger/Playback-info-card/main/banner.png",
     "versions": [
       {
+        "version": "0.2.7.20",
+        "changelog": "Discord live playback cards now show elapsed time, a decreasing remaining-time countdown, and a local-time ETA beside it. The remaining time is recalculated on every 60-second live edit; paused playback shows ETA paused instead of a misleading finish time. Retains Jellyfin 12.1 compatibility and existing Discord/Telegram functionality. 200 C# tests and 172 JavaScript UI tests pass, and the release artifact passes ClamAV.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/IkHadHonger/Playback-info-card/releases/download/v0.2.7.20/jellyfin-plugin-playbackcard.zip",
+        "checksum": "67a9984cd819282fb9361ef1898c71c7",
+        "timestamp": "2026-09-29T14:32:18Z"
+      },
+      {
         "version": "0.2.7.19",
         "changelog": "Discord live start cards now update every 60 seconds independently of the standalone progress-notification setting. Real Jellyfin progress samples continue feeding the live card, Telegram keeps its configured standalone interval, and information-level diagnostics now confirm live-message tracking and edits. Retains Jellyfin 12.1 compatibility and existing Discord/Telegram functionality. 198 C# tests and 172 JavaScript UI tests pass, and the release artifact passes ClamAV.",
         "targetAbi": "12.1.0.0",
