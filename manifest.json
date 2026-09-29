@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/IkHadHonger/Playback-info-card/main/banner.png",
     "versions": [
       {
+        "version": "0.2.7.23",
+        "changelog": "Keeps the two-line visual separation before the Discord Progress section for a clear card hierarchy. When Jellyfin omits per-track status on Direct Play, Direct Stream, or Remux sessions, Discord now truthfully shows Video Direct and Audio Direct instead of status unavailable. Retains live progress edits, the remaining-time countdown and ETA, Jellyfin 12.1 compatibility, and existing Discord/Telegram functionality. 203 C# tests and 172 JavaScript UI tests pass, and the release artifact passes ClamAV.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/IkHadHonger/Playback-info-card/releases/download/v0.2.7.23/jellyfin-plugin-playbackcard.zip",
+        "checksum": "aba606bc52dfc80a520c38d7d58e306c",
+        "timestamp": "2026-09-29T17:26:13Z"
+      },
+      {
         "version": "0.2.7.21",
         "changelog": "Fixes recurring Jellyfin dashboard NotFoundError crashes by never removing or replacing React-owned Devices widget nodes. PlayInfo now mounts beside the stock widget and hides it visually, allowing Jellyfin to update and unmount its own DOM safely during navigation and dashboard refreshes. Retains the Discord live countdown and ETA, Jellyfin 12.1 compatibility, and existing Discord/Telegram functionality. 200 C# tests and 172 JavaScript UI tests pass, and the release artifact passes ClamAV.",
         "targetAbi": "12.1.0.0",
