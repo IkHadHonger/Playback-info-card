@@ -353,6 +353,73 @@ public class DiscordWebhookSenderTests
     }
 
     [Fact]
+    public void BuildDiscordJsonPayload_ShowsDecreasingRemainingTimeAndLocalDiscordEta()
+    {
+        var payload = new PlaybackNotificationPayload
+        {
+            EventType = NotificationEventType.Progress,
+            Timestamp = DateTimeOffset.FromUnixTimeSeconds(1_800_000_000),
+            MediaTitle = "Arrival",
+            PlayMethod = "DirectPlay",
+            VideoStatus = "Video Direct",
+            AudioStatus = "Audio Direct",
+            Position = TimeSpan.FromMinutes(10),
+            TotalDuration = TimeSpan.FromHours(2),
+            PlaybackPercentage = 8
+        };
+
+        var json = DiscordWebhookSender.BuildDiscordJsonPayload(payload);
+        using var doc = JsonDocument.Parse(json);
+        var progressValue = string.Empty;
+        foreach (var field in doc.RootElement.GetProperty("embeds")[0].GetProperty("fields").EnumerateArray())
+        {
+            if (field.GetProperty("name").GetString() == "Progress")
+            {
+                progressValue = field.GetProperty("value").GetString() ?? string.Empty;
+            }
+        }
+
+        Assert.NotEmpty(progressValue);
+        Assert.Contains("00:10:00 elapsed • 01:50:00 remaining", progressValue);
+        Assert.Contains("**ETA** <t:1800006600:t>", progressValue);
+        Assert.DoesNotContain("00:10:00 / 02:00:00", progressValue);
+    }
+
+    [Fact]
+    public void BuildDiscordJsonPayload_PausedPlaybackDoesNotPromiseAnEndTime()
+    {
+        var payload = new PlaybackNotificationPayload
+        {
+            EventType = NotificationEventType.Pause,
+            Timestamp = DateTimeOffset.FromUnixTimeSeconds(1_800_000_000),
+            MediaTitle = "Arrival",
+            PlayMethod = "DirectPlay",
+            VideoStatus = "Video Direct",
+            AudioStatus = "Audio Direct",
+            IsPaused = true,
+            Position = TimeSpan.FromMinutes(10),
+            TotalDuration = TimeSpan.FromHours(2),
+            PlaybackPercentage = 8
+        };
+
+        var json = DiscordWebhookSender.BuildDiscordJsonPayload(payload);
+        using var doc = JsonDocument.Parse(json);
+        var progressValue = string.Empty;
+        foreach (var field in doc.RootElement.GetProperty("embeds")[0].GetProperty("fields").EnumerateArray())
+        {
+            if (field.GetProperty("name").GetString() == "Progress")
+            {
+                progressValue = field.GetProperty("value").GetString() ?? string.Empty;
+            }
+        }
+
+        Assert.NotEmpty(progressValue);
+        Assert.Contains("01:50:00 remaining", progressValue);
+        Assert.Contains("**ETA** paused", progressValue);
+        Assert.DoesNotContain("<t:1800006600:t>", progressValue);
+    }
+
+    [Fact]
     public void BuildDiscordJsonPayload_HidesSourceFpsUsesOrangeProgressAndKeepsTranscodeSpeedSeparate()
     {
         var payload = new PlaybackNotificationPayload

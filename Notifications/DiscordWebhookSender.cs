@@ -604,9 +604,10 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
 
         if (payload.TotalDuration.HasValue && payload.TotalDuration.Value > TimeSpan.Zero)
         {
-            var pos = FormatDuration(payload.Position);
-            var dur = FormatDuration(payload.TotalDuration.Value);
-            secondaryFields.Add(new DiscordField("Progress", $"{BuildProgressBar(payload.PlaybackPercentage, payload.PlayMethod)}\n`{pos} / {dur}`", false));
+            secondaryFields.Add(new DiscordField(
+                "Progress",
+                $"{BuildProgressBar(payload.PlaybackPercentage, payload.PlayMethod)}\n{BuildProgressTiming(payload)}",
+                false));
         }
 
         // Combine fields respecting 25 field limit and 6000 character total limit
@@ -688,6 +689,31 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
     private static string FormatDuration(TimeSpan ts)
     {
         return string.Format(CultureInfo.InvariantCulture, "{0:D2}:{1:D2}:{2:D2}", (int)ts.TotalHours, ts.Minutes, ts.Seconds);
+    }
+
+    private static string BuildProgressTiming(PlaybackNotificationPayload payload)
+    {
+        var duration = payload.TotalDuration!.Value;
+        var position = payload.Position < TimeSpan.Zero ? TimeSpan.Zero : payload.Position;
+        var remaining = duration - position;
+        if (remaining < TimeSpan.Zero)
+        {
+            remaining = TimeSpan.Zero;
+        }
+
+        var timing = $"`{FormatDuration(position)} elapsed • {FormatDuration(remaining)} remaining`";
+        if (!payload.IsPaused &&
+            payload.EventType is NotificationEventType.Start or NotificationEventType.Progress or NotificationEventType.Resume)
+        {
+            var eta = payload.Timestamp.Add(remaining).ToUnixTimeSeconds();
+            timing += $" • **ETA** <t:{eta}:t>";
+        }
+        else if (payload.IsPaused || payload.EventType == NotificationEventType.Pause)
+        {
+            timing += " • **ETA** paused";
+        }
+
+        return timing;
     }
 
     private static string? BuildImdbUrl(string? imdbId)
