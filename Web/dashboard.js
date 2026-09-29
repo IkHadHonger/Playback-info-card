@@ -1,5 +1,5 @@
 /**
- * Playback Info Card - Primary Dashboard Integration (v0.2.7.24)
+ * Playback Info Card - Primary Dashboard Integration (v0.2.7.25)
  * Mounts the NOW PLAYING telemetry grid beside Jellyfin's standard Devices section,
  * then hides that section without removing React-owned DOM nodes.
  */
@@ -7,8 +7,8 @@
 (function (global) {
     'use strict';
 
-    var VERSION = '0.2.7.24';
-    var ASSET_REVISION = '0.2.7.24';
+    var VERSION = '0.2.7.25';
+    var ASSET_REVISION = '0.2.7.25';
     var CONTAINER_ID = 'playback-card-nowplaying-container';
     var POLL_INTERVAL_MS = 3000;
 

@@ -459,6 +459,29 @@ public class DiscordWebhookSenderTests
     }
 
     [Fact]
+    public void BuildDiscordJsonPayload_DoesNotRepeatKodiInClientLabel()
+    {
+        var payload = new PlaybackNotificationPayload
+        {
+            EventType = NotificationEventType.Progress,
+            Timestamp = DateTimeOffset.UtcNow,
+            MediaTitle = "Lucky",
+            Username = "Eric",
+            ClientName = "Kodi",
+            DeviceName = "Kodi (CoreELEC)",
+            PlayMethod = "DirectStream",
+            TotalDuration = TimeSpan.FromMinutes(47),
+            Position = TimeSpan.FromMinutes(17),
+            PlaybackPercentage = 37
+        };
+
+        var json = DiscordWebhookSender.BuildDiscordJsonPayload(payload);
+
+        Assert.Contains("**Client:** Kodi (CoreELEC)", json);
+        Assert.DoesNotContain("Kodi (Kodi (CoreELEC))", json);
+    }
+
+    [Fact]
     public void BuildDiscordJsonPayload_PausedPlaybackDoesNotPromiseAnEndTime()
     {
         var payload = new PlaybackNotificationPayload

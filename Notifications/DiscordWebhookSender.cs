@@ -570,7 +570,7 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
         if (!string.IsNullOrWhiteSpace(payload.Username)) playbackLines.Add($"**User:** {SafeValue(payload.Username)}");
         if (!string.IsNullOrWhiteSpace(payload.ClientName))
         {
-            var client = string.IsNullOrWhiteSpace(payload.DeviceName) ? payload.ClientName : $"{payload.ClientName} ({payload.DeviceName})";
+            var client = FormatClientDisplayName(payload.ClientName, payload.DeviceName);
             playbackLines.Add($"**Client:** {SafeValue(client)}");
         }
         playbackLines.Add($"**Stream:** {SafeValue(payload.PlayMethod)}");
@@ -739,6 +739,25 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
     }
 
     private static string SafeValue(string? value) => EscapeMarkdown(string.IsNullOrWhiteSpace(value) ? "Unavailable" : value.Trim());
+
+    private static string FormatClientDisplayName(string clientName, string? deviceName)
+    {
+        var client = clientName.Trim();
+        var device = deviceName?.Trim();
+        if (string.IsNullOrWhiteSpace(device) || device.Equals(client, StringComparison.OrdinalIgnoreCase))
+        {
+            return client;
+        }
+
+        // Some clients report the app name again as part of the device name, for example
+        // Client="Kodi" and DeviceName="Kodi (CoreELEC)". Keep the richer value once.
+        if (device.StartsWith(client + " (", StringComparison.OrdinalIgnoreCase) && device.EndsWith(')'))
+        {
+            return device;
+        }
+
+        return $"{client} ({device})";
+    }
 
     private static string ResolveTrackStatus(string? reportedStatus, string? playMethod, string trackName)
     {
