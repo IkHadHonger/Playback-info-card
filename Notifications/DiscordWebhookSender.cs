@@ -580,8 +580,12 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
         coreFields.Add(new DiscordField("▶️ Playback", string.Join("\n", playbackLines), true));
 
         var mediaLines = new List<string>();
-        var videoParts = JoinParts(payload.VideoCodec, payload.Resolution, payload.DynamicRange);
+        var videoParts = JoinParts(payload.VideoCodec, payload.Resolution);
         if (!string.IsNullOrEmpty(videoParts)) mediaLines.Add($"**Video:** {videoParts}");
+        if (!string.IsNullOrWhiteSpace(payload.DynamicRange))
+        {
+            mediaLines.Add($"**HDR:** {SafeValue(payload.DynamicRange)}");
+        }
         var audioParts = JoinParts(payload.AudioCodec, payload.AudioChannels, payload.AudioLanguage);
         if (!string.IsNullOrEmpty(audioParts)) mediaLines.Add($"**Audio:** {audioParts}");
         if (!string.IsNullOrWhiteSpace(payload.Container))

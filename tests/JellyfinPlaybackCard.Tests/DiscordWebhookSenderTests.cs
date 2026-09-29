@@ -427,6 +427,38 @@ public class DiscordWebhookSenderTests
     }
 
     [Fact]
+    public void BuildDiscordJsonPayload_PutsFullDolbyVisionLabelOnItsOwnMediaLine()
+    {
+        var payload = new PlaybackNotificationPayload
+        {
+            EventType = NotificationEventType.Progress,
+            Timestamp = DateTimeOffset.UtcNow,
+            MediaTitle = "Lucky",
+            PlayMethod = "DirectPlay",
+            VideoCodec = "hevc",
+            Resolution = "3840x1606",
+            DynamicRange = "Dolby Vision Profile 8.6 (HDR10+)",
+            TotalDuration = TimeSpan.FromMinutes(47),
+            Position = TimeSpan.FromMinutes(17),
+            PlaybackPercentage = 37
+        };
+
+        var json = DiscordWebhookSender.BuildDiscordJsonPayload(payload);
+        using var doc = JsonDocument.Parse(json);
+        var mediaValue = string.Empty;
+        foreach (var field in doc.RootElement.GetProperty("embeds")[0].GetProperty("fields").EnumerateArray())
+        {
+            if (field.GetProperty("name").GetString() == "🎞️ Media")
+            {
+                mediaValue = field.GetProperty("value").GetString() ?? string.Empty;
+            }
+        }
+
+        Assert.Contains("**Video:** hevc • 3840x1606\n**HDR:** Dolby Vision Profile 8.6 (HDR10+)", mediaValue);
+        Assert.DoesNotContain("3840x1606 • Dolby Vision", mediaValue);
+    }
+
+    [Fact]
     public void BuildDiscordJsonPayload_PausedPlaybackDoesNotPromiseAnEndTime()
     {
         var payload = new PlaybackNotificationPayload
