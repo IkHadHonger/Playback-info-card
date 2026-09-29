@@ -170,6 +170,21 @@ public class DeliveryQueueTests
     }
 
     [Fact]
+    public void DiscordLiveScheduler_DoesNotRequireStandaloneProgressNotifications()
+    {
+        var config = new PluginConfiguration
+        {
+            NotificationsEnabled = true,
+            DiscordEnabled = true,
+            NotifyOnStart = true,
+            NotifyOnProgress = false
+        };
+
+        Assert.True(NotificationDeliveryService.CanProcessDiscordLiveUpdates(config, hasDiscordWebhook: true));
+        Assert.False(NotificationDeliveryService.CanProcessDiscordLiveUpdates(config, hasDiscordWebhook: false));
+    }
+
+    [Fact]
     public void DestinationQueue_ProgressDropping_UnderQueuePressure()
     {
         // Capacity 10, reservedCritical 2 -> Non-critical limit is 8

@@ -288,6 +288,14 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
                 _liveMessages.TryRemove(sessionKey!, out _);
             }
 
+            if (editResult.Success)
+            {
+                _logger.LogInformation(
+                    "[DiscordSender] Live message updated for session {SessionKey} (HTTP {Status}).",
+                    sessionKey,
+                    editResult.StatusCode);
+            }
+
             if (editResult.Success || editResult.StatusCode != 404)
             {
                 return editResult;
@@ -368,6 +376,7 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
                 if (!string.IsNullOrWhiteSpace(messageId) && NumericIdRegex.IsMatch(messageId))
                 {
                     _liveMessages[sessionKey] = new LiveMessageState(messageId, hasPoster);
+                    _logger.LogInformation("[DiscordSender] Tracking live message for session {SessionKey}.", sessionKey);
                     return DeliveryResult.Ok(result.StatusCode);
                 }
             }

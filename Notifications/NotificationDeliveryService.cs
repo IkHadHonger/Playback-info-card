@@ -89,6 +89,15 @@ public sealed class NotificationDeliveryService : BackgroundService, INotificati
             return;
         }
 
+        // Discord's live start card must keep receiving truthful Jellyfin samples even when the
+        // administrator does not want standalone periodic progress notifications. Telegram still
+        // obeys NotifyOnProgress and its configured interval inside EnqueueProgress.
+        if (record.EventType == NotificationEventType.Progress)
+        {
+            EnqueueProgress(record, config);
+            return;
+        }
+
         // 2. Event Type Enablement Check
         if (!IsEventEnabled(record, config))
         {
@@ -96,15 +105,6 @@ public sealed class NotificationDeliveryService : BackgroundService, INotificati
                 "[Notifications] Playback event {EventType} for '{MediaTitle}' skipped: event type is not enabled in settings.",
                 record.EventType,
                 record.MediaTitle);
-            return;
-        }
-
-        // Discord edits one live message every minute; Telegram retains the configured
-        // periodic-message interval. Keep those throttles independent so Discord can look live
-        // without making Telegram noisy.
-        if (record.EventType == NotificationEventType.Progress)
-        {
-            EnqueueProgress(record, config);
             return;
         }
 
@@ -182,7 +182,8 @@ public sealed class NotificationDeliveryService : BackgroundService, INotificati
         }
 
         var telegramInterval = TimeSpan.FromMinutes(Math.Max(5, config.ProgressIntervalMinutes));
-        if (config.TelegramEnabled && !string.IsNullOrWhiteSpace(_secretStore.GetTelegramBotToken()) &&
+        if (config.NotifyOnProgress &&
+            config.TelegramEnabled && !string.IsNullOrWhiteSpace(_secretStore.GetTelegramBotToken()) &&
             !string.IsNullOrWhiteSpace(config.TelegramChatId) &&
             !IsDuplicateAndRecord(_telegramProgressDedupe, sessionKey, telegramInterval, now))
         {
@@ -430,8 +431,9 @@ public sealed class NotificationDeliveryService : BackgroundService, INotificati
             while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false))
             {
                 var config = Plugin.Instance?.Configuration;
-                if (config == null || !config.NotificationsEnabled || !config.NotifyOnProgress ||
-                    !config.DiscordEnabled || string.IsNullOrWhiteSpace(_secretStore.GetDiscordWebhookUrl()))
+                if (!CanProcessDiscordLiveUpdates(
+                        config,
+                        !string.IsNullOrWhiteSpace(_secretStore.GetDiscordWebhookUrl())))
                 {
                     continue;
                 }
@@ -439,7 +441,7 @@ public sealed class NotificationDeliveryService : BackgroundService, INotificati
                 var queued = FlushDiscordLiveUpdates(DateTimeOffset.UtcNow);
                 if (queued > 0)
                 {
-                    _logger.LogDebug("[Notifications] Queued {Count} scheduled Discord live progress update(s).", queued);
+                    _logger.LogInformation("[Notifications] Queued {Count} scheduled Discord live progress update(s).", queued);
                 }
             }
         }
@@ -448,6 +450,18 @@ public sealed class NotificationDeliveryService : BackgroundService, INotificati
             // Normal hosted-service shutdown.
         }
     }
+
+    /// <summary>
+    /// Determines whether Discord live-message editing can run. This deliberately does not depend
+    /// on <see cref="PluginConfiguration.NotifyOnProgress"/>: that option controls standalone
+    /// periodic progress notifications, while a live Discord message is the already-enabled start
+    /// notification being edited in place.
+    /// </summary>
+    internal static bool CanProcessDiscordLiveUpdates(PluginConfiguration? config, bool hasDiscordWebhook) =>
+        config != null &&
+        config.NotificationsEnabled &&
+        config.DiscordEnabled &&
+        hasDiscordWebhook;
 
     private async Task<DeliveryResult> SendDiscordAsync(
         PlaybackNotificationPayload payload,
