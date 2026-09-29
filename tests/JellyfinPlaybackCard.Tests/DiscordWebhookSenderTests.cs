@@ -356,9 +356,9 @@ public class DiscordWebhookSenderTests
         Assert.Contains("🟩", allValues);
         Assert.Contains("⬛", allValues);
         Assert.Contains("10%", allValues);
-        Assert.DoesNotContain("Progress", fieldNames);
+        Assert.Contains("Progress", fieldNames);
         Assert.Contains("**Video:** Video Direct", playbackValue);
-        Assert.Contains("**Audio:** Audio Direct\n**Progress**\n", playbackValue);
+        Assert.Contains("**Audio:** Audio Direct", playbackValue);
     }
 
     [Fact]
@@ -382,7 +382,7 @@ public class DiscordWebhookSenderTests
         var progressValue = string.Empty;
         foreach (var field in doc.RootElement.GetProperty("embeds")[0].GetProperty("fields").EnumerateArray())
         {
-            if (field.GetProperty("name").GetString() == "▶️ Playback")
+            if (field.GetProperty("name").GetString() == "Progress")
             {
                 progressValue = field.GetProperty("value").GetString() ?? string.Empty;
             }
@@ -448,7 +448,7 @@ public class DiscordWebhookSenderTests
         var progressValue = string.Empty;
         foreach (var field in doc.RootElement.GetProperty("embeds")[0].GetProperty("fields").EnumerateArray())
         {
-            if (field.GetProperty("name").GetString() == "▶️ Playback")
+            if (field.GetProperty("name").GetString() == "Progress")
             {
                 progressValue = field.GetProperty("value").GetString() ?? string.Empty;
             }

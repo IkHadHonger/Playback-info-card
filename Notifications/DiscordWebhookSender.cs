@@ -559,16 +559,12 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
             }
         };
 
-        // Keep the information hierarchy compact: one playback block, one media block,
-        // and an explicit warning plus full-width progress block only while transcoding.
+        // Keep the information hierarchy clear: one playback block, one media block,
+        // an explicit warning only while transcoding, and one full-width progress block.
         var coreFields = new List<DiscordField>();
         var secondaryFields = new List<DiscordField>();
         var hasTranscodeWarning = !string.IsNullOrEmpty(payload.TranscodeReasonsWhy) &&
             !payload.TranscodeReasonsWhy.Equals("Reason not reported by server", StringComparison.OrdinalIgnoreCase);
-        var hasProgress = payload.TotalDuration.HasValue && payload.TotalDuration.Value > TimeSpan.Zero;
-        var progressValue = hasProgress
-            ? $"{BuildProgressBar(payload.PlaybackPercentage, payload.PlayMethod)}\n{BuildProgressTiming(payload)}"
-            : null;
 
         var playbackLines = new List<string>();
         if (!string.IsNullOrWhiteSpace(payload.Username)) playbackLines.Add($"**User:** {SafeValue(payload.Username)}");
@@ -580,12 +576,6 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
         playbackLines.Add($"**Stream:** {SafeValue(payload.PlayMethod)}");
         playbackLines.Add($"**Video:** {ResolveTrackStatus(payload.VideoStatus, payload.PlayMethod, "Video")}");
         playbackLines.Add($"**Audio:** {ResolveTrackStatus(payload.AudioStatus, payload.PlayMethod, "Audio")}");
-        if (!hasTranscodeWarning && progressValue is not null)
-        {
-            // Keep direct-play/direct-stream cards compact. A separate full-width
-            // Discord field starts a new field row and produces two blank visual lines.
-            playbackLines.Add($"**Progress**\n{progressValue}");
-        }
 
         coreFields.Add(new DiscordField("▶️ Playback", string.Join("\n", playbackLines), true));
 
@@ -613,11 +603,11 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
             coreFields.Add(new DiscordField("⚠️ Transcoding required", transcodeDetails.ToString(), false));
         }
 
-        if (hasTranscodeWarning && progressValue is not null)
+        if (payload.TotalDuration.HasValue && payload.TotalDuration.Value > TimeSpan.Zero)
         {
             secondaryFields.Add(new DiscordField(
                 "Progress",
-                progressValue,
+                $"{BuildProgressBar(payload.PlaybackPercentage, payload.PlayMethod)}\n{BuildProgressTiming(payload)}",
                 false));
         }
 
