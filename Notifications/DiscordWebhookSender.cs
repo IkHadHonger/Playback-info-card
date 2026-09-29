@@ -560,9 +560,15 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
         };
 
         // Keep the information hierarchy compact: one playback block, one media block,
-        // an explicit warning only while transcoding, and one full-width progress block.
+        // and an explicit warning plus full-width progress block only while transcoding.
         var coreFields = new List<DiscordField>();
         var secondaryFields = new List<DiscordField>();
+        var hasTranscodeWarning = !string.IsNullOrEmpty(payload.TranscodeReasonsWhy) &&
+            !payload.TranscodeReasonsWhy.Equals("Reason not reported by server", StringComparison.OrdinalIgnoreCase);
+        var hasProgress = payload.TotalDuration.HasValue && payload.TotalDuration.Value > TimeSpan.Zero;
+        var progressValue = hasProgress
+            ? $"{BuildProgressBar(payload.PlaybackPercentage, payload.PlayMethod)}\n{BuildProgressTiming(payload)}"
+            : null;
 
         var playbackLines = new List<string>();
         if (!string.IsNullOrWhiteSpace(payload.Username)) playbackLines.Add($"**User:** {SafeValue(payload.Username)}");
@@ -572,8 +578,14 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
             playbackLines.Add($"**Client:** {SafeValue(client)}");
         }
         playbackLines.Add($"**Stream:** {SafeValue(payload.PlayMethod)}");
-        playbackLines.Add($"**Video:** {SafeValue(payload.VideoStatus)}");
-        playbackLines.Add($"**Audio:** {SafeValue(payload.AudioStatus)}");
+        playbackLines.Add($"**Video:** {ResolveTrackStatus(payload.VideoStatus, payload.PlayMethod, "Video")}");
+        playbackLines.Add($"**Audio:** {ResolveTrackStatus(payload.AudioStatus, payload.PlayMethod, "Audio")}");
+        if (!hasTranscodeWarning && progressValue is not null)
+        {
+            // Keep direct-play/direct-stream cards compact. A separate full-width
+            // Discord field starts a new field row and produces two blank visual lines.
+            playbackLines.Add($"**Progress**\n{progressValue}");
+        }
 
         coreFields.Add(new DiscordField("▶️ Playback", string.Join("\n", playbackLines), true));
 
@@ -593,8 +605,7 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
         if (!string.IsNullOrWhiteSpace(payload.SubtitleLanguage)) mediaLines.Add($"**Subtitles:** {SafeValue(payload.SubtitleLanguage)}");
         if (mediaLines.Count > 0) coreFields.Add(new DiscordField("🎞️ Media", string.Join("\n", mediaLines), true));
 
-        if (!string.IsNullOrEmpty(payload.TranscodeReasonsWhy) &&
-            !payload.TranscodeReasonsWhy.Equals("Reason not reported by server", StringComparison.OrdinalIgnoreCase))
+        if (hasTranscodeWarning)
         {
             var transcodeDetails = new StringBuilder($"**Why:** {SafeValue(payload.TranscodeReasonsWhy)}");
             if (!string.IsNullOrEmpty(payload.TranscodeEngine)) transcodeDetails.Append("\n**Engine:** ").Append(SafeValue(payload.TranscodeEngine));
@@ -602,11 +613,11 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
             coreFields.Add(new DiscordField("⚠️ Transcoding required", transcodeDetails.ToString(), false));
         }
 
-        if (payload.TotalDuration.HasValue && payload.TotalDuration.Value > TimeSpan.Zero)
+        if (hasTranscodeWarning && progressValue is not null)
         {
             secondaryFields.Add(new DiscordField(
                 "Progress",
-                $"{BuildProgressBar(payload.PlaybackPercentage, payload.PlayMethod)}\n{BuildProgressTiming(payload)}",
+                progressValue,
                 false));
         }
 
@@ -734,6 +745,23 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
     }
 
     private static string SafeValue(string? value) => EscapeMarkdown(string.IsNullOrWhiteSpace(value) ? "Unavailable" : value.Trim());
+
+    private static string ResolveTrackStatus(string? reportedStatus, string? playMethod, string trackName)
+    {
+        if (!string.IsNullOrWhiteSpace(reportedStatus) &&
+            !reportedStatus.Contains("unavailable", StringComparison.OrdinalIgnoreCase))
+        {
+            return SafeValue(reportedStatus);
+        }
+
+        var normalizedMethod = (playMethod ?? string.Empty).Replace(" ", string.Empty, StringComparison.Ordinal).ToUpperInvariant();
+        if (normalizedMethod is "DIRECTPLAY" or "DIRECTSTREAM" or "REMUX")
+        {
+            return $"{trackName} Direct";
+        }
+
+        return SafeValue(reportedStatus);
+    }
 
     private static string JoinParts(params string?[] values)
     {

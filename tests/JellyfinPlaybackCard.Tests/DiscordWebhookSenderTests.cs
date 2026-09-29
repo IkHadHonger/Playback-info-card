@@ -336,9 +336,15 @@ public class DiscordWebhookSenderTests
 
         var fields = embed.GetProperty("fields");
         var allValues = string.Empty;
+        var fieldNames = new List<string>();
+        var playbackValue = string.Empty;
         foreach (var field in fields.EnumerateArray())
         {
-            allValues += field.GetProperty("value").GetString();
+            var fieldName = field.GetProperty("name").GetString() ?? string.Empty;
+            var fieldValue = field.GetProperty("value").GetString() ?? string.Empty;
+            fieldNames.Add(fieldName);
+            allValues += fieldValue;
+            if (fieldName == "▶️ Playback") playbackValue = fieldValue;
         }
         Assert.Contains("HEVC", allValues);
         Assert.Contains("HDR10", allValues);
@@ -350,6 +356,9 @@ public class DiscordWebhookSenderTests
         Assert.Contains("🟩", allValues);
         Assert.Contains("⬛", allValues);
         Assert.Contains("10%", allValues);
+        Assert.DoesNotContain("Progress", fieldNames);
+        Assert.Contains("**Video:** Video Direct", playbackValue);
+        Assert.Contains("**Audio:** Audio Direct\n**Progress**\n", playbackValue);
     }
 
     [Fact]
@@ -373,7 +382,7 @@ public class DiscordWebhookSenderTests
         var progressValue = string.Empty;
         foreach (var field in doc.RootElement.GetProperty("embeds")[0].GetProperty("fields").EnumerateArray())
         {
-            if (field.GetProperty("name").GetString() == "Progress")
+            if (field.GetProperty("name").GetString() == "▶️ Playback")
             {
                 progressValue = field.GetProperty("value").GetString() ?? string.Empty;
             }
@@ -383,6 +392,38 @@ public class DiscordWebhookSenderTests
         Assert.Contains("00:10:00 elapsed • 01:50:00 remaining", progressValue);
         Assert.Contains("**ETA** <t:1800006600:t>", progressValue);
         Assert.DoesNotContain("00:10:00 / 02:00:00", progressValue);
+    }
+
+    [Theory]
+    [InlineData("DirectPlay")]
+    [InlineData("DirectStream")]
+    [InlineData("Remux")]
+    public void BuildDiscordJsonPayload_FillsDirectTrackStatusesWhenJellyfinOmitsThem(string playMethod)
+    {
+        var payload = new PlaybackNotificationPayload
+        {
+            EventType = NotificationEventType.Progress,
+            Timestamp = DateTimeOffset.UtcNow,
+            MediaTitle = "Arrival",
+            PlayMethod = playMethod,
+            VideoStatus = "Video status unavailable",
+            AudioStatus = "Audio status unavailable",
+            TotalDuration = TimeSpan.FromHours(2),
+            Position = TimeSpan.FromMinutes(10),
+            PlaybackPercentage = 8
+        };
+
+        var json = DiscordWebhookSender.BuildDiscordJsonPayload(payload);
+        using var doc = JsonDocument.Parse(json);
+        var allValues = string.Empty;
+        foreach (var field in doc.RootElement.GetProperty("embeds")[0].GetProperty("fields").EnumerateArray())
+        {
+            allValues += field.GetProperty("value").GetString();
+        }
+
+        Assert.Contains("**Video:** Video Direct", allValues);
+        Assert.Contains("**Audio:** Audio Direct", allValues);
+        Assert.DoesNotContain("status unavailable", allValues, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -407,7 +448,7 @@ public class DiscordWebhookSenderTests
         var progressValue = string.Empty;
         foreach (var field in doc.RootElement.GetProperty("embeds")[0].GetProperty("fields").EnumerateArray())
         {
-            if (field.GetProperty("name").GetString() == "Progress")
+            if (field.GetProperty("name").GetString() == "▶️ Playback")
             {
                 progressValue = field.GetProperty("value").GetString() ?? string.Empty;
             }

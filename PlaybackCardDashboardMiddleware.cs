@@ -20,8 +20,8 @@ public class PlaybackCardDashboardMiddleware
     private readonly ILogger<PlaybackCardDashboardMiddleware> _logger;
 
     private const string DashboardScriptTag =
-        "<link plugin=\"PlaybackCard\" rel=\"stylesheet\" href=\"/PlaybackCard/dashboard.css?v=0.2.7.21\" data-asset-revision=\"0.2.7.21\">\n" +
-        "<script plugin=\"PlaybackCard\" version=\"0.2.7.21\" data-asset-revision=\"0.2.7.21\" src=\"/PlaybackCard/dashboard.js?v=0.2.7.21\" defer></script>\n";
+        "<link plugin=\"PlaybackCard\" rel=\"stylesheet\" href=\"/PlaybackCard/dashboard.css?v=0.2.7.22\" data-asset-revision=\"0.2.7.22\">\n" +
+        "<script plugin=\"PlaybackCard\" version=\"0.2.7.22\" data-asset-revision=\"0.2.7.22\" src=\"/PlaybackCard/dashboard.js?v=0.2.7.22\" defer></script>\n";
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PlaybackCardDashboardMiddleware"/> class.
