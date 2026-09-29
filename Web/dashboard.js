@@ -1,14 +1,14 @@
 /**
- * Playback Info Card - Primary Dashboard Integration (v0.2.7.20)
- * Completely replaces Jellyfin's standard stock Devices section on the default
- * Dashboard with the NOW PLAYING telemetry grid and active connected device telemetry.
+ * Playback Info Card - Primary Dashboard Integration (v0.2.7.21)
+ * Mounts the NOW PLAYING telemetry grid beside Jellyfin's standard Devices section,
+ * then hides that section without removing React-owned DOM nodes.
  */
 
 (function (global) {
     'use strict';
 
-    var VERSION = '0.2.7.20';
-    var ASSET_REVISION = '0.2.7.20';
+    var VERSION = '0.2.7.21';
+    var ASSET_REVISION = '0.2.7.21';
     var CONTAINER_ID = 'playback-card-nowplaying-container';
     var POLL_INTERVAL_MS = 3000;
 
@@ -1141,10 +1141,16 @@
                     var p = h.parentElement;
                     if (p && p !== document.body && p !== root && (!p.id || p.id.indexOf('Page') === -1)) {
                         p.style.display = 'none';
-                        if (p.parentNode) p.parentNode.removeChild(p);
+                        if (typeof p.setAttribute === 'function') {
+                            p.setAttribute('aria-hidden', 'true');
+                            p.setAttribute('data-playback-card-stock-hidden', 'true');
+                        }
                     } else {
                         h.style.display = 'none';
-                        if (h.parentNode) h.parentNode.removeChild(h);
+                        if (typeof h.setAttribute === 'function') {
+                            h.setAttribute('aria-hidden', 'true');
+                            h.setAttribute('data-playback-card-stock-hidden', 'true');
+                        }
                     }
                 }
             }
@@ -1169,21 +1175,24 @@
                 existing.setAttribute('data-asset-revision', ASSET_REVISION);
             }
 
-            // In-place replacement of the stock Devices widget
-            if (typeof devicesSection.replaceWith === 'function') {
-                devicesSection.replaceWith(existing);
-            } else if (devicesSection.parentNode) {
+            // Keep React-owned nodes in the DOM. Removing/replacing the Devices widget
+            // behind React's back can make Jellyfin later call removeChild for a node
+            // that no longer exists, resulting in a fatal NotFoundError during routing.
+            if (existing.parentNode !== devicesSection.parentNode && devicesSection.parentNode) {
                 devicesSection.parentNode.insertBefore(existing, devicesSection);
-                devicesSection.parentNode.removeChild(devicesSection);
             }
 
-            // Ensure stock devices section is completely hidden and removed
-            devicesSection.style.display = 'none';
-            if (devicesSection.parentNode) {
-                devicesSection.parentNode.removeChild(devicesSection);
+            // Visually replace the stock widget while leaving its DOM identity intact
+            // so React remains free to update or unmount it safely.
+            if (devicesSection.style) {
+                devicesSection.style.display = 'none';
+            }
+            if (typeof devicesSection.setAttribute === 'function') {
+                devicesSection.setAttribute('aria-hidden', 'true');
+                devicesSection.setAttribute('data-playback-card-stock-hidden', 'true');
             }
 
-            // Cleanup any remaining stock device headings or cards outside our container
+            // Hide any remaining stock device headings or cards outside our container.
             cleanupLingeringStockDevices(existing);
 
             return existing;

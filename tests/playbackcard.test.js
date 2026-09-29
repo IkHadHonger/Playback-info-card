@@ -47,7 +47,7 @@ function createMockDashboard() {
     return mockModule.exports;
 }
 
-describe('Playback Info Card v0.2.7.20 Test Suite', () => {
+describe('Playback Info Card v0.2.7.21 Test Suite', () => {
     let controller;
 
     beforeEach(() => {
@@ -55,9 +55,9 @@ describe('Playback Info Card v0.2.7.20 Test Suite', () => {
     });
 
     describe('1. Diagnostics Panel States', () => {
-        it('initializes with default waiting state and version 0.2.7.20', () => {
-            assert.equal(controller.version, '0.2.7.20');
-            assert.equal(controller.diagState.pluginVersion, '0.2.7.20');
+        it('initializes with default waiting state and version 0.2.7.21', () => {
+            assert.equal(controller.version, '0.2.7.21');
+            assert.equal(controller.diagState.pluginVersion, '0.2.7.21');
             assert.equal(controller.diagState.sessionsApiStatus, 'Waiting for sessions');
             assert.equal(controller.diagState.pollingState, 'active');
             assert.equal(controller.diagState.lastErrorCategory, 'OK');
@@ -260,7 +260,7 @@ describe('Playback Info Card v0.2.7.20 Test Suite', () => {
             controller.diagState.lastSuccessTime = Date.now() - 5000;
             const report = controller.buildDiagnosticReport();
 
-            assert.equal(report.pluginVersion, '0.2.7.20');
+            assert.equal(report.pluginVersion, '0.2.7.21');
             assert.ok('jellyfinVersion' in report);
             assert.ok('webVersion' in report);
             assert.ok('route' in report);
@@ -308,7 +308,7 @@ describe('Playback Info Card v0.2.7.20 Test Suite', () => {
 
         it('passes clean redacted diagnostic reports without false positive', () => {
             const cleanReport = JSON.stringify({
-                pluginVersion: '0.2.7.20',
+                pluginVersion: '0.2.7.21',
                 jellyfinVersion: '10.9.11',
                 webVersion: 'Available',
                 route: '/playbackcard',
@@ -978,10 +978,10 @@ describe('Playback Info Card v0.2.7.20 Test Suite', () => {
             return mockModule.exports;
         }
 
-        it('initializes with version 0.2.7.20', () => {
+        it('initializes with version 0.2.7.21', () => {
             const dash = createMockDashboard();
-            assert.equal(dash.version, '0.2.7.20');
-            assert.equal(dash.state.version, '0.2.7.20');
+            assert.equal(dash.version, '0.2.7.21');
+            assert.equal(dash.state.version, '0.2.7.21');
             assert.equal(dash.state.displayMode, 'compact');
         });
 
@@ -1002,16 +1002,18 @@ describe('Playback Info Card v0.2.7.20 Test Suite', () => {
             assert.equal(dashSettings.isDashboardPage(), false);
         });
 
-        it('completely replaces the stock Devices section with NOW PLAYING and removes stock Devices from DOM', () => {
+        it('mounts NOW PLAYING beside the stock Devices section without removing React-owned DOM', () => {
             let insertBeforeCalled = false;
             let removeChildCalled = false;
-            let removedNode = null;
+            let replaceWithCalled = false;
             let insertedNode = null;
 
             const stockDevicesElement = {
                 id: 'activeDevices',
                 className: 'activeDevices section',
                 style: { display: 'block' },
+                setAttribute: () => {},
+                replaceWith: () => { replaceWithCalled = true; },
                 parentNode: null
             };
 
@@ -1023,7 +1025,6 @@ describe('Playback Info Card v0.2.7.20 Test Suite', () => {
                 },
                 removeChild: (childNode) => {
                     removeChildCalled = true;
-                    removedNode = childNode;
                     childNode.parentNode = null;
                 }
             };
@@ -1049,10 +1050,10 @@ describe('Playback Info Card v0.2.7.20 Test Suite', () => {
             assert.equal(container.id, 'playback-card-nowplaying-container');
             assert.equal(insertBeforeCalled, true, 'Container must be mounted in Devices location');
             assert.strictEqual(insertedNode, container, 'Mounted node must be the NOW PLAYING container');
-            assert.equal(removeChildCalled, true, 'Stock Devices section must be removed from the DOM');
-            assert.strictEqual(removedNode, stockDevicesElement, 'Removed node must be the stock Devices element');
+            assert.equal(replaceWithCalled, false, 'React-owned Devices section must never be replaced');
+            assert.equal(removeChildCalled, false, 'React-owned Devices section must never be removed');
             assert.equal(stockDevicesElement.style.display, 'none', 'Stock Devices element style must be hidden');
-            assert.equal(stockDevicesElement.parentNode, null, 'Stock Devices element must have null parentNode after removal');
+            assert.strictEqual(stockDevicesElement.parentNode, parent, 'Stock Devices element must retain its React-owned parent');
         });
 
         it('does not create duplicate NOW PLAYING containers during repeated calls or SPA navigation', () => {
@@ -1097,7 +1098,7 @@ describe('Playback Info Card v0.2.7.20 Test Suite', () => {
             assert.equal(createdCount, 1, 'No duplicate container element created');
         });
 
-        it('detects and replaces modern Jellyfin 12.1 React/MUI DevicesWidget in-place', () => {
+        it('detects and safely hides modern Jellyfin 12.1 React/MUI DevicesWidget in-place', () => {
             let insertBeforeCalled = false;
             let removeChildCalled = false;
             let insertedBeforeRef = null;
@@ -1119,6 +1120,7 @@ describe('Playback Info Card v0.2.7.20 Test Suite', () => {
                 parentElement: leftColumnStack,
                 parentNode: leftColumnStack,
                 style: { display: 'block' },
+                setAttribute: () => {},
                 querySelector: () => null,
                 querySelectorAll: () => []
             };
@@ -1167,9 +1169,9 @@ describe('Playback Info Card v0.2.7.20 Test Suite', () => {
             assert.ok(container, 'Container mounted');
             assert.equal(insertBeforeCalled, true, 'Container inserted into left column Stack');
             assert.strictEqual(insertedBeforeRef, devicesWidgetBox, 'Inserted before DevicesWidget in-place');
-            assert.equal(removeChildCalled, true, 'Stock 12.1 DevicesWidget removed from DOM');
+            assert.equal(removeChildCalled, false, 'Stock 12.1 DevicesWidget remains owned by React');
             assert.equal(devicesWidgetBox.style.display, 'none', 'Stock 12.1 DevicesWidget display set to none');
-            assert.equal(devicesWidgetBox.parentNode, null, 'Stock 12.1 DevicesWidget unparented');
+            assert.strictEqual(devicesWidgetBox.parentNode, leftColumnStack, 'Stock 12.1 DevicesWidget keeps its parent');
         });
 
         it('strictly excludes navigation drawer/sidebar items and finds the real Devices widget inside main', () => {
@@ -1202,6 +1204,7 @@ describe('Playback Info Card v0.2.7.20 Test Suite', () => {
                 parentElement: mainLayoutStack,
                 parentNode: mainLayoutStack,
                 style: { display: 'block' },
+                setAttribute: () => {},
                 closest: () => null,
                 querySelectorAll: () => []
             };
@@ -1251,9 +1254,9 @@ describe('Playback Info Card v0.2.7.20 Test Suite', () => {
             const container = dash.ensureContainerInserted();
 
             assert.ok(container, 'Container must be created');
-            assert.equal(replacedInMain, true, 'Must replace real Devices widget inside main, ignoring navigation drawer');
+            assert.equal(replacedInMain, true, 'Must mount beside real Devices widget inside main, ignoring navigation drawer');
             assert.equal(realDevicesWidget.style.display, 'none');
-            assert.equal(realDevicesWidget.parentNode, null);
+            assert.strictEqual(realDevicesWidget.parentNode, mainLayoutStack);
         });
 
         it('NEVER mounts at the top of the dashboard or falls back to mainContent.firstChild when Devices block is not found', () => {
@@ -1282,7 +1285,7 @@ describe('Playback Info Card v0.2.7.20 Test Suite', () => {
             assert.equal(appendedToMain, false, 'MUST NOT append to main content without devices section');
         });
 
-        it('survives Jellyfin DOM rerenders and replaces stock Devices when re-rendered', () => {
+        it('survives Jellyfin DOM rerenders and hides stock Devices when re-rendered', () => {
             let removeChildCalled = false;
             let removedNode = null;
 
@@ -1295,6 +1298,7 @@ describe('Playback Info Card v0.2.7.20 Test Suite', () => {
                 id: 'activeDevices',
                 className: 'activeDevices',
                 style: { display: 'block' },
+                setAttribute: () => {},
                 parentNode: {
                     insertBefore: (newNode, refNode) => {
                         newNode.parentNode = newlyRerenderedDevices.parentNode;
@@ -1319,9 +1323,10 @@ describe('Playback Info Card v0.2.7.20 Test Suite', () => {
             const container = dash.ensureContainerInserted();
 
             assert.strictEqual(container, existingContainer, 'Must reuse existing container');
-            assert.equal(removeChildCalled, true, 'Re-rendered stock devices must be removed');
-            assert.strictEqual(removedNode, newlyRerenderedDevices, 'Removed element must be the re-rendered devices section');
+            assert.equal(removeChildCalled, false, 'Re-rendered stock devices must remain React-owned');
+            assert.strictEqual(removedNode, null, 'No React-owned node may be removed');
             assert.equal(newlyRerenderedDevices.style.display, 'none');
+            assert.ok(newlyRerenderedDevices.parentNode, 'Re-rendered stock devices retain their parent');
         });
 
         it('renders empty state "No active playback" and preserves connected device visibility when no streams are playing', () => {
