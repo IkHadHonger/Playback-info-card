@@ -273,7 +273,7 @@ public static class PlaybackEventMapper
                 {
                     resolution = $"{videoStream.Width.Value}x{videoStream.Height.Value}";
                 }
-                dynamicRange = FormatDynamicRange(videoStream);
+                dynamicRange = FormatDynamicRange(videoStream, item?.Tags);
                 if (videoStream.RealFrameRate.HasValue && videoStream.RealFrameRate.Value > 0)
                 {
                     frameRate = string.Format(CultureInfo.InvariantCulture, "{0:0.##} fps", videoStream.RealFrameRate.Value);
@@ -370,7 +370,7 @@ public static class PlaybackEventMapper
         };
     }
 
-    private static string? FormatDynamicRange(MediaStream videoStream)
+    internal static string? FormatDynamicRange(MediaStream videoStream, IReadOnlyList<string>? itemTags = null)
     {
         var dvProfile = Convert.ToString(videoStream.DvProfile, CultureInfo.InvariantCulture);
         var dvLevel = Convert.ToString(videoStream.DvLevel, CultureInfo.InvariantCulture);
@@ -403,11 +403,22 @@ public static class PlaybackEventMapper
             }
             if (string.IsNullOrWhiteSpace(level) && profileMatch.Success && profileMatch.Groups[2].Success) level = profileMatch.Groups[2].Value;
 
-            var layer = descriptor.Contains("FEL", StringComparison.OrdinalIgnoreCase)
+            // The patched Jellyfin for Kodi client uses these exact Jellyfin item tags as its
+            // authoritative Profile 7 FEL/MEL source before writing Kodi's strHdrDetail value.
+            // Read the same server-side metadata here so notification embeds agree with Kodi
+            // without connecting to or scraping Kodi itself.
+            var taggedLayer = itemTags?.Any(tag => tag.Equals("Dolby Vision FEL", StringComparison.OrdinalIgnoreCase)) == true
                 ? "FEL"
-                : descriptor.Contains("MEL", StringComparison.OrdinalIgnoreCase)
+                : itemTags?.Any(tag => tag.Equals("Dolby Vision MEL", StringComparison.OrdinalIgnoreCase)) == true
                     ? "MEL"
-                    : videoStream.ElPresentFlag == 1 || descriptor.Contains("WithEL", StringComparison.OrdinalIgnoreCase) ? "EL" : null;
+                    : null;
+            var layer = profile == "7" && taggedLayer != null
+                ? taggedLayer
+                : descriptor.Contains("FEL", StringComparison.OrdinalIgnoreCase)
+                    ? "FEL"
+                    : descriptor.Contains("MEL", StringComparison.OrdinalIgnoreCase)
+                        ? "MEL"
+                        : videoStream.ElPresentFlag == 1 || descriptor.Contains("WithEL", StringComparison.OrdinalIgnoreCase) ? "EL" : null;
             var baseRange = descriptor.Contains("HDR10+", StringComparison.OrdinalIgnoreCase)
                 || descriptor.Contains("HDR10PLUS", StringComparison.OrdinalIgnoreCase)
                 || descriptor.Contains("HDR10 PLUS", StringComparison.OrdinalIgnoreCase)

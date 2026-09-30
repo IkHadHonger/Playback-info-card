@@ -17,6 +17,42 @@ namespace JellyfinPlaybackCard.Tests;
 
 public class PlaybackEventConsumerTests
 {
+    [Theory]
+    [InlineData("Dolby Vision FEL", "Dolby Vision Profile 7.6 (FEL)")]
+    [InlineData("Dolby Vision MEL", "Dolby Vision Profile 7.6 (MEL)")]
+    public void FormatDynamicRange_Profile7_UsesSameJellyfinTagsAsPatchedKodiClient(string tag, string expected)
+    {
+        var stream = new MediaStream
+        {
+            Type = MediaStreamType.Video,
+            DvProfile = 7,
+            DvLevel = 6,
+            RpuPresentFlag = 1,
+            ElPresentFlag = 1
+        };
+
+        var result = PlaybackEventMapper.FormatDynamicRange(stream, new[] { tag });
+
+        Assert.Equal(expected, result);
+    }
+
+    [Fact]
+    public void FormatDynamicRange_Profile7WithoutFelMelTag_DoesNotGuessLayerType()
+    {
+        var stream = new MediaStream
+        {
+            Type = MediaStreamType.Video,
+            DvProfile = 7,
+            DvLevel = 6,
+            RpuPresentFlag = 1,
+            ElPresentFlag = 1
+        };
+
+        var result = PlaybackEventMapper.FormatDynamicRange(stream, Array.Empty<string>());
+
+        Assert.Equal("Dolby Vision Profile 7.6 (EL)", result);
+    }
+
     /// <summary>
     /// Thread-safe stand-in for <see cref="INotificationDeliveryService"/> that records every
     /// enqueued record's event type. A plain <see cref="System.Collections.Generic.List{T}"/> (as
