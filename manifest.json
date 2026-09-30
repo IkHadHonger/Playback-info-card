@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/IkHadHonger/Playback-info-card/main/banner.png",
     "versions": [
       {
+        "version": "0.2.7.27",
+        "changelog": "Discord embeds keep Dolby Vision profile and FEL/MEL information while omitting the redundant HDR10 or HDR10+ compatibility suffix from Dolby Vision rows. Standalone HDR10 and HDR10+ media remain explicitly labelled. Kodi sessions that report both client and device as Kodi are now displayed as Kodi (CoreELEC), consistently for films and series. Retains live progress edits, remaining-time countdown and ETA, Jellyfin 12.1 compatibility, and existing dashboard and Telegram functionality. 213 C# tests and 174 JavaScript UI tests pass, and the release artifact passes ClamAV.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/IkHadHonger/Playback-info-card/releases/download/v0.2.7.27/jellyfin-plugin-playbackcard.zip",
+        "checksum": "934e75144046f46b3f9495050f13868a",
+        "timestamp": "2026-09-30T18:56:35Z"
+      },
+      {
         "version": "0.2.7.26",
         "changelog": "Discord and Telegram embeds now use the same Jellyfin item tags as the patched Jellyfin for Kodi client to identify Dolby Vision Profile 7 FEL and MEL media. Dolby Vision FEL and Dolby Vision MEL tags produce explicit FEL or MEL labels; untagged Profile 7 enhancement-layer media remains safely labelled EL instead of being guessed. Retains Profile 8.x and HDR10/HDR10+ reporting, live progress edits, the remaining-time countdown and ETA, and Jellyfin 12.1 compatibility. 208 C# tests and 174 JavaScript UI tests pass, and the release artifact passes ClamAV.",
         "targetAbi": "12.1.0.0",
