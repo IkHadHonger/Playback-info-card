@@ -133,8 +133,8 @@ public class SecurityAndPrivacyTests
     {
         var asm = typeof(Jellyfin.Plugin.PlaybackCard.Plugin).Assembly;
 
-        // Strict 0.2.7.26 version check
-        Assert.Equal(new Version(0, 2, 7, 26), asm.GetName().Version);
+        // Strict 0.2.7.27 version check
+        Assert.Equal(new Version(0, 2, 7, 27), asm.GetName().Version);
 
         // Embedded resources
         var resources = asm.GetManifestResourceNames();
@@ -148,7 +148,7 @@ public class SecurityAndPrivacyTests
         using var reader = new System.IO.StreamReader(stream);
         var html = reader.ReadToEnd();
         Assert.NotEmpty(html);
-        Assert.Contains("v0.2.7.26", html);
+        Assert.Contains("v0.2.7.27", html);
         Assert.Contains("playbackCardContainer", html);
     }
 }

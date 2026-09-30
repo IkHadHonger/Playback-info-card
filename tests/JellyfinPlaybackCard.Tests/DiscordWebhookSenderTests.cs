@@ -427,7 +427,7 @@ public class DiscordWebhookSenderTests
     }
 
     [Fact]
-    public void BuildDiscordJsonPayload_PutsFullDolbyVisionLabelOnItsOwnMediaLine()
+    public void BuildDiscordJsonPayload_PutsCompactDolbyVisionLabelOnItsOwnMediaLine()
     {
         var payload = new PlaybackNotificationPayload
         {
@@ -454,8 +454,60 @@ public class DiscordWebhookSenderTests
             }
         }
 
-        Assert.Contains("**Video:** hevc • 3840x1606\n**HDR:** Dolby Vision Profile 8.6 (HDR10+)", mediaValue);
+        Assert.Contains("**Video:** hevc • 3840x1606\n**HDR:** Dolby Vision Profile 8.6", mediaValue);
+        Assert.DoesNotContain("HDR10+", mediaValue);
         Assert.DoesNotContain("3840x1606 • Dolby Vision", mediaValue);
+    }
+
+    [Theory]
+    [InlineData("Dolby Vision Profile 7.6 (FEL · HDR10+)", "Dolby Vision Profile 7.6 (FEL)")]
+    [InlineData("Dolby Vision Profile 7.6 (MEL · HDR10)", "Dolby Vision Profile 7.6 (MEL)")]
+    public void BuildDiscordJsonPayload_KeepsLayerButRemovesHdrCompatibilitySuffix(string dynamicRange, string expected)
+    {
+        var payload = new PlaybackNotificationPayload
+        {
+            EventType = NotificationEventType.Progress,
+            Timestamp = DateTimeOffset.UtcNow,
+            MediaTitle = "Ballerina",
+            PlayMethod = "DirectPlay",
+            DynamicRange = dynamicRange,
+            TotalDuration = TimeSpan.FromMinutes(47),
+            Position = TimeSpan.FromMinutes(17),
+            PlaybackPercentage = 37
+        };
+
+        var json = DiscordWebhookSender.BuildDiscordJsonPayload(payload);
+
+        Assert.Contains($"**HDR:** {expected}", json);
+        Assert.DoesNotContain("· HDR10", json);
+    }
+
+    [Theory]
+    [InlineData("HDR10")]
+    [InlineData("HDR10+")]
+    public void BuildDiscordJsonPayload_KeepsStandaloneHdrFormats(string dynamicRange)
+    {
+        var payload = new PlaybackNotificationPayload
+        {
+            EventType = NotificationEventType.Progress,
+            Timestamp = DateTimeOffset.UtcNow,
+            MediaTitle = "Arrival",
+            PlayMethod = "DirectPlay",
+            DynamicRange = dynamicRange,
+            TotalDuration = TimeSpan.FromMinutes(116),
+            Position = TimeSpan.FromMinutes(17),
+            PlaybackPercentage = 15
+        };
+
+        var json = DiscordWebhookSender.BuildDiscordJsonPayload(payload);
+        using var doc = JsonDocument.Parse(json);
+        var mediaValue = doc.RootElement.GetProperty("embeds")[0].GetProperty("fields")
+            .EnumerateArray()
+            .Single(field => field.GetProperty("name").GetString() == "🎞️ Media")
+            .GetProperty("value")
+            .GetString() ?? string.Empty;
+
+        Assert.Contains($"**HDR:** {dynamicRange}", mediaValue);
     }
 
     [Fact]
@@ -479,6 +531,29 @@ public class DiscordWebhookSenderTests
 
         Assert.Contains("**Client:** Kodi (CoreELEC)", json);
         Assert.DoesNotContain("Kodi (Kodi (CoreELEC))", json);
+    }
+
+    [Fact]
+    public void BuildDiscordJsonPayload_UsesCoreElecLabelWhenKodiRepeatsItsOwnName()
+    {
+        var payload = new PlaybackNotificationPayload
+        {
+            EventType = NotificationEventType.Stop,
+            Timestamp = DateTimeOffset.UtcNow,
+            MediaTitle = "Ballerina",
+            Username = "regnohdahki",
+            ClientName = "Kodi",
+            DeviceName = "Kodi",
+            PlayMethod = "DirectStream",
+            TotalDuration = TimeSpan.FromMinutes(119),
+            Position = TimeSpan.FromMinutes(54),
+            PlaybackPercentage = 43
+        };
+
+        var json = DiscordWebhookSender.BuildDiscordJsonPayload(payload);
+
+        Assert.Contains("**Client:** Kodi (CoreELEC)", json);
+        Assert.DoesNotContain("**Client:** Kodi (Kodi)", json);
     }
 
     [Fact]

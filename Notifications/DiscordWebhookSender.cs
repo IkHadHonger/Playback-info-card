@@ -584,7 +584,7 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
         if (!string.IsNullOrEmpty(videoParts)) mediaLines.Add($"**Video:** {videoParts}");
         if (!string.IsNullOrWhiteSpace(payload.DynamicRange))
         {
-            mediaLines.Add($"**HDR:** {SafeValue(payload.DynamicRange)}");
+            mediaLines.Add($"**HDR:** {SafeValue(FormatDiscordDynamicRange(payload.DynamicRange))}");
         }
         var audioParts = JoinParts(payload.AudioCodec, payload.AudioChannels, payload.AudioLanguage);
         if (!string.IsNullOrEmpty(audioParts)) mediaLines.Add($"**Audio:** {audioParts}");
@@ -744,6 +744,16 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
     {
         var client = clientName.Trim();
         var device = deviceName?.Trim();
+
+        // Jellyfin for Kodi can report both fields simply as "Kodi", even when the
+        // playback device is the user's CoreELEC appliance. Keep the notification
+        // label useful and consistent with the richer value reported by other events.
+        if (client.Equals("Kodi", StringComparison.OrdinalIgnoreCase) &&
+            (string.IsNullOrWhiteSpace(device) || device.Equals("Kodi", StringComparison.OrdinalIgnoreCase)))
+        {
+            return "Kodi (CoreELEC)";
+        }
+
         if (string.IsNullOrWhiteSpace(device) || device.Equals(client, StringComparison.OrdinalIgnoreCase))
         {
             return client;
@@ -757,6 +767,24 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
         }
 
         return $"{client} ({device})";
+    }
+
+    private static string FormatDiscordDynamicRange(string dynamicRange)
+    {
+        // The HDR field already identifies the dynamic-range category. Keep useful
+        // Dolby Vision profile/layer information, but omit its HDR10/HDR10+
+        // compatibility suffix. Standalone HDR10 and HDR10+ labels remain unchanged.
+        var value = dynamicRange.Trim();
+        if (!value.StartsWith("Dolby Vision", StringComparison.OrdinalIgnoreCase))
+        {
+            return value;
+        }
+
+        return value
+            .Replace(" · HDR10+)", ")", StringComparison.OrdinalIgnoreCase)
+            .Replace(" · HDR10)", ")", StringComparison.OrdinalIgnoreCase)
+            .Replace(" (HDR10+)", string.Empty, StringComparison.OrdinalIgnoreCase)
+            .Replace(" (HDR10)", string.Empty, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string ResolveTrackStatus(string? reportedStatus, string? playMethod, string trackName)
