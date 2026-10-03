@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/IkHadHonger/Playback-info-card/main/banner.png",
     "versions": [
       {
+        "version": "0.2.7.28",
+        "changelog": "Discord playback notifications now include readable Dutch message text with the privacy-filtered username, media title, and series/episode details, so mobile notification previews no longer rely on an image-only message. Posters, embeds, live progress edits, Telegram and dashboard functionality are preserved. Mentions remain disabled. Aligns dashboard asset cache versions and makes secret-storage tests portable without changing production security. All 217 C# tests and 174 JavaScript UI tests pass on GitHub, and the release artifact passes ClamAV.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/IkHadHonger/Playback-info-card/releases/download/v0.2.7.28-notifications/jellyfin-plugin-playbackcard.zip",
+        "checksum": "8c0b8194f538e628e8bbe8b86be80fce",
+        "timestamp": "2026-10-03T11:25:37Z"
+      },
+      {
         "version": "0.2.7.27",
         "changelog": "Discord embeds keep Dolby Vision profile and FEL/MEL information while omitting the redundant HDR10 or HDR10+ compatibility suffix from Dolby Vision rows. Standalone HDR10 and HDR10+ media remain explicitly labelled. Kodi sessions that report both client and device as Kodi are now displayed as Kodi (CoreELEC), consistently for films and series. Retains live progress edits, remaining-time countdown and ETA, Jellyfin 12.1 compatibility, and existing dashboard and Telegram functionality. 213 C# tests and 174 JavaScript UI tests pass, and the release artifact passes ClamAV.",
         "targetAbi": "12.1.0.0",
