@@ -35,3 +35,4 @@ Library/
 output/
 *.zip
 .preview/
+.dotnet/

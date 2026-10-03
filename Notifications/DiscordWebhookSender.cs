@@ -678,12 +678,46 @@ public sealed class DiscordWebhookSender : IDiscordWebhookSender, IDisposable
 
         var rootPayload = new Dictionary<string, object>
         {
-            ["content"] = "",
+            // Mobile push previews need ordinary message text. An image-only
+            // webhook otherwise appears as "Afbeelding verstuurd" on iPhone.
+            ["content"] = BuildNotificationPreview(payload),
             ["allowed_mentions"] = new { parse = Array.Empty<string>() }, // Zero mention parsing
             ["embeds"] = new[] { embedObj }
         };
 
         return JsonSerializer.Serialize(rootPayload);
+    }
+
+    private static string BuildNotificationPreview(PlaybackNotificationPayload payload)
+    {
+        static string Part(string? value, string fallback, int limit)
+        {
+            var text = string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+            text = Regex.Replace(text, @"\s+", " ");
+            return EscapeMarkdown(SafeTruncate(text, limit)).Replace("@", "@\u200b", StringComparison.Ordinal);
+        }
+
+        // Username is already filtered by the existing disclosure setting.
+        var user = Part(payload.Username, "Een gebruiker", 80);
+        var title = Part(payload.MediaTitle, "Onbekende titel", 140);
+        if (!string.IsNullOrWhiteSpace(payload.SeriesName))
+        {
+            var series = Part(payload.SeriesName, "", 100);
+            var episode = payload.SeasonNumber.HasValue && payload.EpisodeNumber.HasValue
+                ? string.Create(CultureInfo.InvariantCulture, $" · S{payload.SeasonNumber:D2}E{payload.EpisodeNumber:D2}")
+                : string.Empty;
+            title = $"{series}{episode} — {title}";
+        }
+
+        return payload.EventType switch
+        {
+            NotificationEventType.Start => $"▶️ {user} is gestart met {title}",
+            NotificationEventType.Stop => $"⏹️ {user} is gestopt met {title}",
+            NotificationEventType.Completion => $"✅ {user} heeft {title} uitgekeken",
+            NotificationEventType.Pause => $"⏸️ {user} heeft {title} gepauzeerd",
+            NotificationEventType.Resume => $"▶️ {user} kijkt verder naar {title}",
+            _ => $"🎬 {user} kijkt naar {title}"
+        };
     }
 
     /// <summary>

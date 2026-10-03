@@ -145,9 +145,9 @@ public class NotificationSecretStoreTests : IDisposable
         Assert.DoesNotContain("VerySecretTelegramBotToken67890", rawText);
         Assert.DoesNotContain("VerySecretOmdbKey24680", rawText);
 
-        // Key file must be 32 bytes (256 bits)
+        // The master key is 256 bits; Windows protects its on-disk representation with DPAPI.
         var keyBytes = File.ReadAllBytes(keyFile);
-        Assert.Equal(32, keyBytes.Length);
+        Assert.Equal(32, NotificationSecretStore.WindowsDpapi.Unprotect(keyBytes).Length);
     }
 
     [Fact]
@@ -373,13 +373,10 @@ public class NotificationSecretStoreTests : IDisposable
     public void ApplyWindowsRestrictedAcl_LogsWarning_WhenIcaclsCannotRun()
     {
         var path = Path.Combine(Path.GetTempPath(), $"acl_test_{Guid.NewGuid():N}.tmp");
-        File.WriteAllText(path, "test");
         try
         {
-            // On any host without a real icacls.exe on PATH/System32 (i.e. this test suite's CI and
-            // local dev environments, which are not Windows), Process.Start throws or the tool is
-            // simply absent -- deterministically exercising the failure path that used to be a bare
-            // `catch { }` with zero logging.
+            // A nonexistent file also makes real Windows icacls fail, so the warning path is
+            // exercised consistently on Windows and on hosts where icacls is unavailable.
             var warnings = CaptureDiagnosticWarnings(() =>
             {
                 NotificationSecretStore.ApplyWindowsRestrictedAcl(path);

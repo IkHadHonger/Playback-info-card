@@ -11,6 +11,48 @@ namespace JellyfinPlaybackCard.Tests;
 
 public class DiscordWebhookSenderTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NotificationPreview_IdentifiesUserAndEpisodeWithOrWithoutPoster(bool withPoster)
+    {
+        var payload = new PlaybackNotificationPayload {
+            EventType = NotificationEventType.Start, Username = "Lorenzo",
+            MediaTitle = "Spervuur", SeriesName = "Reacher", SeasonNumber = 3, EpisodeNumber = 1
+        };
+        using var json = JsonDocument.Parse(DiscordWebhookSender.BuildDiscordJsonPayload(payload, withPoster));
+        Assert.Equal("▶️ Lorenzo is gestart met Reacher · S03E01 — Spervuur",
+            json.RootElement.GetProperty("content").GetString());
+        Assert.Equal(0, json.RootElement.GetProperty("allowed_mentions").GetProperty("parse").GetArrayLength());
+        Assert.Single(json.RootElement.GetProperty("embeds").EnumerateArray());
+    }
+
+    [Fact]
+    public void NotificationPreview_RespectsHiddenUsername()
+    {
+        var payload = new PlaybackNotificationPayload {
+            EventType = NotificationEventType.Start, MediaTitle = "VIAPLAY F1"
+        };
+        using var json = JsonDocument.Parse(DiscordWebhookSender.BuildDiscordJsonPayload(payload));
+        Assert.Equal("▶️ Een gebruiker is gestart met VIAPLAY F1",
+            json.RootElement.GetProperty("content").GetString());
+    }
+
+    [Fact]
+    public void NotificationPreview_IsBoundedSingleLineAndNeutralizesMentions()
+    {
+        var payload = new PlaybackNotificationPayload {
+            EventType = NotificationEventType.Stop, Username = "@everyone\nLorenzo",
+            MediaTitle = new string('x', 4000), SeriesName = new string('y', 4000)
+        };
+        using var json = JsonDocument.Parse(DiscordWebhookSender.BuildDiscordJsonPayload(payload));
+        var content = json.RootElement.GetProperty("content").GetString()!;
+        Assert.DoesNotContain("@everyone", content, StringComparison.Ordinal);
+        Assert.DoesNotContain("\n", content);
+        Assert.True(content.Length < 1000);
+        Assert.Contains("is gestopt met", content);
+    }
+
     private static PlaybackNotificationPayload CreateSamplePayload()
     {
         return new PlaybackNotificationPayload
